@@ -32,21 +32,20 @@ public class Persona {
     private String imagen;
     private String ocupacion;
 
-    @OneToOne(cascade = {CascadeType.ALL})
-    @JoinColumn
+    @OneToOne(mappedBy = "persona", optional = false, orphanRemoval = true)
     private Usuario usuario;
 
     @OneToMany(mappedBy = "persona", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Educacion> estudios = new ArrayList<>();
 
     @OneToMany(mappedBy = "persona", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Habilidades> habilidades = new ArrayList<>();
+    private List<Habilidad> habilidades = new ArrayList<>();
 
     @OneToMany(mappedBy = "persona", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("trabajo.fecha_inicio DESC")
     private List<Trabajo> experienciaLaboral = new ArrayList<>();
 
     @OneToMany(mappedBy = "persona", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Proyectos> proyectos = new ArrayList<>();
+    private List<Proyecto> proyectos = new ArrayList<>();
 
 }

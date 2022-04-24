@@ -7,20 +7,17 @@ import lombok.Setter;
 
 import javax.persistence.*;
 
-@Builder
-@NoArgsConstructor
-@Getter
 @Setter
+@Getter
+@Builder
 @Entity
-public class Habilidades {
+@NoArgsConstructor
+public class Proyecto {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
     private String nombre;
-
-    @Column(name = "porcentaje")
-    private int nivel;
 
     @Column(name = "obs")
     private String descripcion;

@@ -5,10 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
 
 @Getter
 @Setter
@@ -22,5 +19,9 @@ public class Usuario {
     private Long id;
     private String nombreUsuario;
     private String password;
+
+    @OneToOne(orphanRemoval = true)
+    @JoinColumn(name = "persona_id")
+    private Persona persona;
 
 }
