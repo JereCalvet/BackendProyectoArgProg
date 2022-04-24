@@ -6,23 +6,26 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import javax.persistence.*;
+import java.time.LocalDate;
 
+@Entity
+@Builder
 @Getter
 @Setter
 @NoArgsConstructor
-@Builder
-@Entity
-public class Educacion {
+public class Trabajo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int id;
-    private String institucion;
-    private String titulo;
+    private String empresa;
+    private String cargo;
     private String lugar;
 
-    @Enumerated(EnumType.STRING)
-    private ProgresoEducacion estado;
+    @Column(name = "fecha_inicio")
+    private LocalDate desde;
+    @Column(name = "fecha_fin")
+    private LocalDate hasta;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "persona_id", nullable = false)
