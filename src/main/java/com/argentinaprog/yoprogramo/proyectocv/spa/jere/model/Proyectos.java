@@ -7,22 +7,20 @@ import lombok.Setter;
 
 import javax.persistence.*;
 
-@Getter
 @Setter
-@NoArgsConstructor
+@Getter
 @Builder
 @Entity
-public class Educacion {
+@NoArgsConstructor
+public class Proyectos {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int id;
-    private String institucion;
-    private String titulo;
-    private String lugar;
+    private String nombre;
 
-    @Enumerated(EnumType.STRING)
-    private ProgresoEducacion estado;
+    @Column(name = "obs")
+    private String descripcion;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "persona_id", nullable = false)
