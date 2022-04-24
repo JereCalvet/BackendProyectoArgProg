@@ -1,7 +1,6 @@
 package com.argentinaprog.yoprogramo.proyectocv.spa.jere.model;
 
 public enum Nacionalidades {
-
     ARGENTINA,
     BRASIL,
     CHILE,
@@ -11,5 +10,4 @@ public enum Nacionalidades {
     PERU,
     URUGUAY,
     VENEZUELA
-
 }
