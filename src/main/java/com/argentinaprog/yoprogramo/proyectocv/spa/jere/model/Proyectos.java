@@ -16,7 +16,7 @@ public class Proyectos {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private int id;
+    private Long id;
     private String nombre;
 
     @Column(name = "obs")

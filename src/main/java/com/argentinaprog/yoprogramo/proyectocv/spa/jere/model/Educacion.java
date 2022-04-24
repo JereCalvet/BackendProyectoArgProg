@@ -16,7 +16,8 @@ public class Educacion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private int id;
+    @Column(nullable = false)
+    private Long id;
     private String institucion;
     private String titulo;
     private String lugar;

@@ -17,7 +17,7 @@ public class Trabajo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private int id;
+    private Long id;
     private String empresa;
     private String cargo;
     private String lugar;
