@@ -20,7 +20,7 @@ public class Persona {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(nullable = false)
-    private int id;
+    private Long id;
     private String nombres;
     private String apellidos;
     private LocalDate fechaNacimiento;
