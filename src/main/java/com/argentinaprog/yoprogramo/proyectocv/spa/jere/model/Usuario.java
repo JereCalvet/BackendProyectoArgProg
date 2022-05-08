@@ -1,16 +1,14 @@
 package com.argentinaprog.yoprogramo.proyectocv.spa.jere.model;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import javax.persistence.*;
 
 @Getter
 @Setter
-@Builder
 @Entity
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
 public class Usuario {
 

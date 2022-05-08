@@ -1,17 +1,16 @@
 package com.argentinaprog.yoprogramo.proyectocv.spa.jere.model;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.*;
 
 import javax.persistence.*;
 import java.time.LocalDate;
 
 @Entity
-@Builder
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
 public class Trabajo {
 
@@ -24,9 +23,11 @@ public class Trabajo {
 
     @Column(name = "fecha_inicio")
     private LocalDate desde;
+
     @Column(name = "fecha_fin")
     private LocalDate hasta;
 
+    @JsonIgnore
     @ManyToOne(optional = false)
     @JoinColumn(name = "persona_id", nullable = false)
     private Persona persona;

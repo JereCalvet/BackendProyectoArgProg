@@ -1,16 +1,15 @@
 package com.argentinaprog.yoprogramo.proyectocv.spa.jere.model;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.*;
 
 import javax.persistence.*;
 
 @Setter
 @Getter
-@Builder
 @Entity
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
 public class Proyecto {
 
@@ -22,6 +21,7 @@ public class Proyecto {
     @Column(name = "obs")
     private String descripcion;
 
+    @JsonIgnore
     @ManyToOne(optional = false)
     @JoinColumn(name = "persona_id", nullable = false)
     private Persona persona;

@@ -1,16 +1,15 @@
 package com.argentinaprog.yoprogramo.proyectocv.spa.jere.model;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.*;
 
 import javax.persistence.*;
 
 @Getter
 @Setter
-@NoArgsConstructor
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 @Entity
 public class Educacion {
 
@@ -25,8 +24,9 @@ public class Educacion {
     @Enumerated(EnumType.STRING)
     private ProgresoEducacion estado;
 
-    @ManyToOne(optional = false)
+    @JsonIgnore
     @JoinColumn(name = "persona_id", nullable = false)
+    @ManyToOne(optional = false)
     private Persona persona;
 
 }
