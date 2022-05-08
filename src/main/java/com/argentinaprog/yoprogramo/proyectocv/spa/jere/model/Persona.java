@@ -1,9 +1,6 @@
 package com.argentinaprog.yoprogramo.proyectocv.spa.jere.model;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import javax.persistence.*;
 import java.time.LocalDate;
@@ -14,6 +11,7 @@ import java.util.List;
 @Getter
 @Setter
 @Builder
+@AllArgsConstructor
 @NoArgsConstructor
 public class Persona {
 
@@ -32,20 +30,23 @@ public class Persona {
     private String imagen;
     private String ocupacion;
 
-    @OneToOne(mappedBy = "persona", optional = false, orphanRemoval = true)
+    @OneToOne(mappedBy = "persona", optional = true, orphanRemoval = true)
     private Usuario usuario;
 
+    @Singular
     @OneToMany(mappedBy = "persona", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Educacion> estudios = new ArrayList<>();
 
+    @Singular
     @OneToMany(mappedBy = "persona", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Habilidad> habilidades = new ArrayList<>();
 
+    @Singular
     @OneToMany(mappedBy = "persona", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("trabajo.fecha_inicio DESC")
-    private List<Trabajo> experienciaLaboral = new ArrayList<>();
+    //@OrderBy("trabajo.fecha_inicio DESC")
+    private List<Trabajo> experienciasLaborales = new ArrayList<>();
 
+    @Singular
     @OneToMany(mappedBy = "persona", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Proyecto> proyectos = new ArrayList<>();
-
 }
