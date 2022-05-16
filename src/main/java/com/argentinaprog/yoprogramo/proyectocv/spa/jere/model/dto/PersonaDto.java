@@ -4,6 +4,7 @@ import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import javax.validation.constraints.NotEmpty;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.List;
@@ -11,7 +12,11 @@ import java.util.List;
 @AllArgsConstructor
 @Getter
 public class PersonaDto implements Serializable {
+
+    @NotEmpty(message = "El nombre es obligatorio")
     private final String nombres;
+
+    @NotEmpty(message = "El apellido es obligatorio")
     private final String apellidos;
     private final LocalDate fechaNacimiento;
     private final Nacionalidades nacionalidad;

@@ -15,9 +15,9 @@ import java.util.List;
 @RequestMapping("/api/v1/persona")
 public class PersonaController {
 
-    private final PersonaService personaSvc;
-
     @Autowired
+    private final PersonaService personaSvc;
+    
     public PersonaController(PersonaService personaSvc) {
         this.personaSvc = personaSvc;
     }
