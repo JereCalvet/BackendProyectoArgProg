@@ -25,6 +25,7 @@ public class Usuario implements UserDetails {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
     private String username;
+    @JsonIgnore
     private String password;
     @JsonIgnore
     private boolean enabled = true;

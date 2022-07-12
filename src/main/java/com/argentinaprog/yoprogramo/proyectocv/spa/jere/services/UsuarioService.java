@@ -1,10 +1,14 @@
 package com.argentinaprog.yoprogramo.proyectocv.spa.jere.services;
 
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.EmailAlreadyTakenException;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.UsuarioNotFoundException;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Usuario;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.LoginRequestDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.repositories.UsuarioRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -36,8 +40,20 @@ public class UsuarioService implements UserDetailsService {
     }
 
     public Usuario save(LoginRequestDto loginRequestDto) {
+        usuarioRepo.findByUsername(loginRequestDto.getUsername())
+                .ifPresent(usuario -> {
+                    throw new EmailAlreadyTakenException(loginRequestDto.getUsername());
+                });
+
         final Usuario usuario = mapper.map(loginRequestDto, Usuario.class);
         usuario.setPassword(bcryptEncoder.encode(usuario.getPassword()));
         return usuarioRepo.save(usuario);
+    }
+
+    public Usuario getCurrentUser() {
+        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        final String username = authentication.getName();
+        return usuarioRepo.findByUsername(username)
+                .orElseThrow(UsuarioNotFoundException::new);
     }
 }

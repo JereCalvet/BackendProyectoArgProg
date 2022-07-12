@@ -30,6 +30,7 @@ public class Persona {
     private String imagen;
     private String ocupacion;
 
+    //@JsonIgnore
     @OneToOne(mappedBy = "persona", optional = true, orphanRemoval = true)
     private Usuario usuario;
 

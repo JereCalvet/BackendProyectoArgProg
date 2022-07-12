@@ -25,4 +25,10 @@ public class AuthController {
     public ResponseEntity<Usuario> register(@RequestBody @Valid LoginRequestDto loginRequestDto) {
         return new ResponseEntity<>(usuarioSvc.save(loginRequestDto), HttpStatus.CREATED);
     }
+
+    @GetMapping("/current")
+    @ResponseBody
+    public ResponseEntity<Usuario> currentUser() {
+        return new ResponseEntity<>(usuarioSvc.getCurrentUser(), HttpStatus.OK);
+    }
 }
