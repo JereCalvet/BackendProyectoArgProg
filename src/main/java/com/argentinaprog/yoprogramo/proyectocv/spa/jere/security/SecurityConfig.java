@@ -16,6 +16,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
@@ -67,17 +68,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         // @formatter:on
     }
 
-    @Bean @Value("${frontend.url}")
+    @Bean
+    @Value("${frontend.url}")
     public CorsConfigurationSource corsConfigurationSource(String frontendUrl) {
         var corsConfiguration = new CorsConfiguration();
         corsConfiguration.setAllowCredentials(true);
-        log.info("frontendUrl: {}", frontendUrl);
-        System.out.println(frontendUrl);
-        log.info("------------");
-        System.out.println("------------");
-        corsConfiguration.setAllowedOrigins(List.of(frontendUrl, "https://portfolio-e8aa4.web.app/","https://portfolio-e8aa4.firebaseapp.com/", "https://portfolio-e8aa4.web.app","https://portfolio-e8aa4.firebaseapp.com"));
+        corsConfiguration.setAllowedOrigins(List.of(frontendUrl.split(",")));
         log.info("frontendUrl: {}", corsConfiguration.getAllowedOrigins());
-        System.out.println(corsConfiguration.getAllowedOrigins());
         corsConfiguration.setAllowedHeaders(Arrays.asList("Origin", "Access-Control-Allow-Origin", "Content-Type",
                 "Accept", "Authorization", "Origin, Accept", "X-Requested-With", "Access-Control-Request-Method",
                 "Access-Control-Request-Headers"));
