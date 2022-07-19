@@ -1,5 +1,6 @@
 package com.argentinaprog.yoprogramo.proyectocv.spa.jere.security;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -21,6 +22,7 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 
 @Configuration
 @EnableWebSecurity
+@Slf4j
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
@@ -70,7 +72,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     public CorsConfigurationSource corsConfigurationSource(String frontendUrl) {
         var corsConfiguration = new CorsConfiguration();
         corsConfiguration.setAllowCredentials(true);
-        corsConfiguration.setAllowedOrigins(List.of(frontendUrl));
+        log.info("frontendUrl: {}", frontendUrl);
+        log.info("------------");
+        corsConfiguration.setAllowedOrigins(List.of(frontendUrl, "https://portfolio-e8aa4.web.app/","https://portfolio-e8aa4.firebaseapp.com/", "https://portfolio-e8aa4.web.app","https://portfolio-e8aa4.firebaseapp.com"));
+        log.info("frontendUrl: {}", corsConfiguration.getAllowedOrigins());
         corsConfiguration.setAllowedHeaders(Arrays.asList("Origin", "Access-Control-Allow-Origin", "Content-Type",
                 "Accept", "Authorization", "Origin, Accept", "X-Requested-With", "Access-Control-Request-Method",
                 "Access-Control-Request-Headers"));
