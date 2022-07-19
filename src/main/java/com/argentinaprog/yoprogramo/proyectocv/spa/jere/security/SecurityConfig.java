@@ -72,9 +72,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         var corsConfiguration = new CorsConfiguration();
         corsConfiguration.setAllowCredentials(true);
         log.info("frontendUrl: {}", frontendUrl);
+        System.out.println(frontendUrl);
         log.info("------------");
+        System.out.println("------------");
         corsConfiguration.setAllowedOrigins(List.of(frontendUrl, "https://portfolio-e8aa4.web.app/","https://portfolio-e8aa4.firebaseapp.com/", "https://portfolio-e8aa4.web.app","https://portfolio-e8aa4.firebaseapp.com"));
         log.info("frontendUrl: {}", corsConfiguration.getAllowedOrigins());
+        System.out.println(corsConfiguration.getAllowedOrigins());
         corsConfiguration.setAllowedHeaders(Arrays.asList("Origin", "Access-Control-Allow-Origin", "Content-Type",
                 "Accept", "Authorization", "Origin, Accept", "X-Requested-With", "Access-Control-Request-Method",
                 "Access-Control-Request-Headers"));
