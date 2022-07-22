@@ -31,7 +31,7 @@ public class Persona {
     private String ocupacion;
 
     //@JsonIgnore
-    @OneToOne(mappedBy = "persona", optional = true, orphanRemoval = true)
+    @OneToOne(mappedBy = "persona", cascade = CascadeType.ALL, optional = true, orphanRemoval = true)
     private Usuario usuario;
 
     @Singular

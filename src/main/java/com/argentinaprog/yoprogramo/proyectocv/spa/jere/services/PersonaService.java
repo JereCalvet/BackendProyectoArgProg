@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class PersonaService {
@@ -19,10 +20,14 @@ public class PersonaService {
     private final PersonaRepository personaRepo;
 
     @Autowired
+    private final UsuarioService usuarioSvc;
+
+    @Autowired
     private final ModelMapper mapper;
 
-    public PersonaService(PersonaRepository personaRepo, ModelMapper mapper) {
+    public PersonaService(PersonaRepository personaRepo, UsuarioService usuarioSvc, ModelMapper mapper) {
         this.personaRepo = personaRepo;
+        this.usuarioSvc = usuarioSvc;
         this.mapper = mapper;
     }
 
@@ -33,9 +38,15 @@ public class PersonaService {
                 .orElseThrow(() -> new PersonaNotFoundException(id));
     }
 
+    @Transactional
     public Persona addPersona(PersonaDto personaDto) {
         var persona = mapper.map(personaDto, Persona.class);
+        final Usuario currentUser = this.usuarioSvc.getCurrentUser();
 
+        if (Objects.nonNull(currentUser.getPersona())) {
+            throw new PersonaAlreadyExistsException(currentUser.getUsername());
+        }
+        currentUser.setPersona(persona);
         return personaRepo.save(persona);
     }
 
@@ -53,6 +64,12 @@ public class PersonaService {
         mapper.map(personaDto, persona);
 
         return personaRepo.save(persona);
+    }
+
+    public Persona getCurrentPersona() {
+        final Usuario currentUser = this.usuarioSvc.getCurrentUser();
+        return Optional.ofNullable(currentUser.getPersona())
+                .orElseThrow(() -> new PersonaNotFoundException(currentUser.getUsername()));
     }
 
     public List<Persona> getAllPersonas() {

@@ -50,6 +50,12 @@ public class PersonaController {
         return new ResponseEntity<>(personaSvc.getAllPersonas(), HttpStatus.OK);
     }
 
+    @GetMapping("/current")
+    @ResponseBody
+    public ResponseEntity<Persona> currentPersona() {
+        return new ResponseEntity<>(personaSvc.getCurrentPersona(), HttpStatus.OK);
+    }
+
     // ------------------- Trabajos -----------------------------
 
     @PostMapping("/add/{id}/trabajos/")
