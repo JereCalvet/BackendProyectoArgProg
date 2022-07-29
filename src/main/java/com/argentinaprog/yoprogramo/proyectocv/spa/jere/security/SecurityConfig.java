@@ -4,12 +4,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -50,19 +52,22 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         // @formatter:off
         http.csrf().disable()
                 .cors()
-                .and()
+            .and()
                 .sessionManagement()
                 .sessionCreationPolicy(STATELESS)
-                .and()
+            .and()
                 .addFilter(jwtAuthenticationFilter)
                 .addFilterAfter(new JwtAuthorizationFilter(jwtConfig), JwtAuthenticationFilter.class)
                 .authorizeRequests()
-                .antMatchers("/api/v1/auth/**").permitAll()
-                .antMatchers("/api/v1/persona/find/{id}").permitAll()
-                .antMatchers("/api/v1/persona/all").permitAll()
-                .antMatchers("/api/v1/persona/current").permitAll()
+                    .antMatchers("/api/v1/auth/**").permitAll()
+                    .antMatchers("/api/v1/persona/find/{id}").permitAll()
+                    .antMatchers("/api/v1/persona/all").permitAll()
+                    .antMatchers("/api/v1/persona/current").permitAll()
                 .anyRequest()
-                .authenticated();
+                    .authenticated()
+            .and()
+                .exceptionHandling()
+                    .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
         // @formatter:on
     }
 
