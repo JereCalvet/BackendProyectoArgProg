@@ -1,25 +1,22 @@
 package com.argentinaprog.yoprogramo.proyectocv.spa.jere;
 
 import org.testcontainers.containers.MySQLContainer;
-import org.junit.jupiter.api.Test;
 
-abstract class AbstractContainerBaseTest {
+public abstract class AbstractContainerBaseTest {
 
     static final MySQLContainer MY_SQL_CONTAINER;
 
     static {
-        MY_SQL_CONTAINER = new MySQLContainer();
+        MY_SQL_CONTAINER = new MySQLContainer<>("mysql:latest")
+                .withDatabaseName("testDB")
+                .withUsername("testUser")
+                .withPassword("testPassword");
         MY_SQL_CONTAINER.start();
-    }
-}
 
-class FirstTest extends AbstractContainerBaseTest {
+        System.setProperty("spring.datasource.url", MY_SQL_CONTAINER.getJdbcUrl());
+        System.setProperty("spring.datasource.password", MY_SQL_CONTAINER.getPassword());
+        System.setProperty("spring.datasource.username", MY_SQL_CONTAINER.getUsername());
 
-    @Test
-    void someTestMethod() {
-        String url = MY_SQL_CONTAINER.getJdbcUrl();
-
-        // create a connection and run test as normal
     }
 }
 

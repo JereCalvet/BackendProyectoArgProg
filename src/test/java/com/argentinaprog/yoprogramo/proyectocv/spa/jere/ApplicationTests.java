@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class ApplicationTests {
+class ApplicationTests extends AbstractContainerBaseTest {
 
     @Autowired
     private AuthController authController;
@@ -20,6 +20,11 @@ class ApplicationTests {
     void contextLoads() {
         Assertions.assertThat(authController).isNotNull();
         Assertions.assertThat(personaController).isNotNull();
+    }
+
+    @Test
+    void testContainerLoads() {
+        Assertions.assertThat(MY_SQL_CONTAINER.isRunning());
     }
 
 }
