@@ -47,6 +47,20 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         var jwtAuthenticationFilter = new JwtAuthenticationFilter(authenticationManager(), jwtConfig);
         jwtAuthenticationFilter.setFilterProcessesUrl("/api/v1/auth/login");
 
+        String[] swaggerWhitelist = {
+                // -- Swagger UI v2
+                "/v2/api-docs",
+                "/swagger-resources",
+                "/swagger-resources/**",
+                "/configuration/ui",
+                "/configuration/security",
+                "/swagger-ui.html",
+                "/webjars/**",
+                // -- Swagger UI v3 (OpenAPI)
+                "/v3/api-docs/**",
+                "/swagger-ui/**"
+        };
+
         // @formatter:off
         http.csrf().disable()
                 .cors()
@@ -57,6 +71,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .addFilter(jwtAuthenticationFilter)
                 .addFilterAfter(new JwtAuthorizationFilter(jwtConfig), JwtAuthenticationFilter.class)
                 .authorizeRequests()
+                .antMatchers(swaggerWhitelist).permitAll()
                 .antMatchers("/api/v1/auth/**").permitAll()
                 .antMatchers("/api/v1/persona/find/{id}").permitAll()
                 .antMatchers("/api/v1/persona/all").permitAll()
