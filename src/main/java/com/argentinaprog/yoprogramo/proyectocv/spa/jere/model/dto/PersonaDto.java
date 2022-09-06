@@ -27,6 +27,6 @@ public class PersonaDto implements Serializable {
     private final Usuario usuario;
     private final List<Educacion> estudios;
     private final List<Habilidad> habilidades;
-    private final List<TrabajoDto> experienciasLaborales;
+    private final List<Trabajo> experienciasLaborales;
     private final List<Proyecto> proyectos;
 }
