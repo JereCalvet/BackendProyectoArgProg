@@ -17,7 +17,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PersonaServiceTest {
@@ -125,13 +125,11 @@ class PersonaServiceTest {
                 .ocupacion(ocupacion)
                 .build();
 
-        doReturn(usuarioJere).when(usuarioSvc).getCurrentUser();
         BDDMockito.given(usuarioSvc.getCurrentUser())
                 .willReturn(usuarioJere);
 
-        doReturn(personaJere).when(mapper).map(personaDto, Persona.class);
-//        BDDMockito.given(mapper.map(Mockito.any(), Mockito.eq(Persona.class)))
-//                .willReturn(personaJere);
+        BDDMockito.given(mapper.map(Mockito.any(), Mockito.eq(Persona.class)))
+                .willReturn(personaJere);
 
         //when
         underTest.addPersona(personaDto);
@@ -149,8 +147,6 @@ class PersonaServiceTest {
         Assertions.assertThat(personaCaptured.getDescripcion()).isEqualTo(descripcion);
         Assertions.assertThat(personaCaptured.getImagen()).isEqualTo(imagen);
         Assertions.assertThat(personaCaptured.getOcupacion()).isEqualTo(ocupacion);
-
-        // TODO: solo testea la memoria (equal && hashcode)
         Assertions.assertThat(usuarioJere.getPersona()).isEqualTo(personaJere);
     }
 
@@ -254,7 +250,6 @@ class PersonaServiceTest {
         Mockito.verify(personaRepo).delete(personaArgumentCaptor.capture());
 
         final Persona personaValue = personaArgumentCaptor.getValue();
-        // TODO: solo testea la memoria (equal && hashcode)
         Assertions.assertThat(personaValue).isEqualTo(personaJere);
         Assertions.assertThat(personaValue.getId()).isEqualTo(id);
     }
@@ -324,10 +319,23 @@ class PersonaServiceTest {
                 null
         );
 
-//        BDDMockito.given(personaRepo.findById(Mockito.anyLong()))
-//                .willReturn(Optional.of(personaJere));
+        BDDMockito.given(personaRepo.findById(Mockito.anyLong()))
+                .willReturn(Optional.of(personaJere));
+        BDDMockito.given(personaRepo.save(Mockito.any(Persona.class)))
+                .willReturn(personaJere);
 
-        doReturn(Optional.of(personaJere)).when(personaRepo).findById(Mockito.anyLong());
+        doAnswer((invocation) -> {
+                    var dto = (PersonaDto) invocation.getArgument(0);
+                    var persona = (Persona) invocation.getArgument(1);
+                    persona.setNombres(dto.getNombres());
+                    persona.setApellidos(dto.getApellidos());
+                    persona.setFechaNacimiento(dto.getFechaNacimiento());
+                    persona.setNacionalidad(dto.getNacionalidad());
+                    persona.setEmail(dto.getEmail());
+
+                    return null;
+                }
+        ).when(mapper).map(personaDto, personaJere);
 
         //when
         final Persona updatedPersona = underTest.updatePersona(id, personaDto);
@@ -338,10 +346,21 @@ class PersonaServiceTest {
         final Long capturedValueIdArgument = idArgumentCaptor.getValue();
         Assertions.assertThat(capturedValueIdArgument).isEqualTo(id);
 
+        ArgumentCaptor<Persona> personaArgumentCaptor = ArgumentCaptor.forClass(Persona.class);
+        Mockito.verify(personaRepo).save(personaArgumentCaptor.capture());
+        final Persona capturedValuePersonaArgument = personaArgumentCaptor.getValue();
+        Assertions.assertThat(capturedValuePersonaArgument).isEqualTo(personaJere);
+
         Assertions.assertThat(updatedPersona).isEqualTo(personaJere);
         Assertions.assertThat(updatedPersona.getId()).isEqualTo(id);
         Assertions.assertThat(updatedPersona.getNombres()).isEqualTo(nombresUpdate);
+        Assertions.assertThat(updatedPersona.getApellidos()).isEqualTo(apellidosUpdate);
+        Assertions.assertThat(updatedPersona.getFechaNacimiento()).isEqualTo(fechaNacimientoUpdate);
+        Assertions.assertThat(updatedPersona.getNacionalidad()).isEqualTo(nacionalidadUpdate);
         Assertions.assertThat(updatedPersona.getEmail()).isEqualTo(emailUpdate);
+        Assertions.assertThat(updatedPersona.getOcupacion()).isEqualTo(ocupacion);
+        Assertions.assertThat(updatedPersona.getDescripcion()).isEqualTo(descripcion);
+        Assertions.assertThat(updatedPersona.getImagen()).isEqualTo(imagen);
     }
 
     @Test

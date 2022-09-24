@@ -52,7 +52,6 @@ public class PersonaService {
 
     @Transactional
     public void deletePersona(Long id) {
-        // TODO: reemplazar por deleteById, me di cuenta mientras testeaba
         var persona = personaRepo.findById(id)
                 .orElseThrow(() -> new PersonaNotFoundException(id));
         personaRepo.delete(persona);
