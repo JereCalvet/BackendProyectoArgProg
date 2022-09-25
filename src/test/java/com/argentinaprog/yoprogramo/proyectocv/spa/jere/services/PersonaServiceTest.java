@@ -2,14 +2,20 @@ package com.argentinaprog.yoprogramo.proyectocv.spa.jere.services;
 
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.PersonaAlreadyExistsException;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.PersonaNotFoundException;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.*;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Nacionalidades;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Persona;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Usuario;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.PersonaDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.repositories.PersonaRepository;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.ArgumentCaptor;
+import org.mockito.BDDMockito;
+import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
 
@@ -17,6 +23,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +45,7 @@ class PersonaServiceTest {
         underTest = new PersonaService(personaRepo, usuarioSvc, mapper);
     }
 
+    @DisplayName("Obtener persona correctamente")
     @Test
     void getPersona_ShouldReturnPersona() {
         //given
@@ -63,6 +71,7 @@ class PersonaServiceTest {
         Assertions.assertThat(idCapturado).isEqualTo(id);
     }
 
+    @DisplayName("Obtener persona debe tirar error cuando la persona no existe")
     @Test
     void getPersona_whenPersonaNotFound_shouldThrowPersonaNotFoundException() {
         //given
@@ -78,6 +87,7 @@ class PersonaServiceTest {
                 .hasMessageContaining(errorMsg);
     }
 
+    @DisplayName("Debe crear persona")
     @Test
     void addPersona_ShouldAddPersona() {
         //given
@@ -135,8 +145,10 @@ class PersonaServiceTest {
         underTest.addPersona(personaDto);
 
         //then
+        verify(mapper).map(personaDto, Persona.class);
+
         ArgumentCaptor<Persona> personaArgumentCaptor = ArgumentCaptor.forClass(Persona.class);
-        Mockito.verify(personaRepo).save(personaArgumentCaptor.capture());
+        verify(personaRepo).save(personaArgumentCaptor.capture());
 
         final Persona personaCaptured = personaArgumentCaptor.getValue();
         Assertions.assertThat(personaCaptured.getNombres()).isEqualTo(personaDto.getNombres());
@@ -150,6 +162,7 @@ class PersonaServiceTest {
         Assertions.assertThat(usuarioJere.getPersona()).isEqualTo(personaJere);
     }
 
+    @DisplayName("Debe tirar error cuando el usuario ya tiene una persona creada e intenta crear otra.")
     @Test
     void addPersona_whenLoggedUserAlreadyHasPersona_shouldThrowPersonaAlreadyExistsException() {
         //given
@@ -192,8 +205,10 @@ class PersonaServiceTest {
         final String emailDeRegistro = "registro@test.com";
 
         Usuario supuestoUsuarioLogeado = Mockito.mock(Usuario.class);
-        doReturn(supuestoUsuarioLogeado).when(usuarioSvc).getCurrentUser();
-        doReturn(emailDeRegistro).when(supuestoUsuarioLogeado).getUsername();
+        BDDMockito.given(usuarioSvc.getCurrentUser())
+                .willReturn(supuestoUsuarioLogeado);
+        BDDMockito.given(supuestoUsuarioLogeado.getUsername())
+                .willReturn(emailDeRegistro);
         BDDMockito.when(supuestoUsuarioLogeado.getPersona())
                 .thenReturn(personaJere);
 
@@ -210,6 +225,7 @@ class PersonaServiceTest {
         Mockito.verify(personaRepo, Mockito.never()).save(Mockito.any());
     }
 
+    @DisplayName("Debe tirar borrar la persona correctamente, el id es valido")
     @Test
     void deletePersona() {
         //given
@@ -254,6 +270,7 @@ class PersonaServiceTest {
         Assertions.assertThat(personaValue.getId()).isEqualTo(id);
     }
 
+    @DisplayName("Debe tirar error al intentar borrar, cuando no existe una persona con ese id")
     @Test
     void deletePersona_whenPersonaByIdNotFound_shouldThrowPersonaNotFoundException() {
         //given
@@ -272,7 +289,7 @@ class PersonaServiceTest {
         Mockito.verify(personaRepo, Mockito.never()).delete(Mockito.any());
     }
 
-
+    @DisplayName("Debe actualizar la persona cuando es id es valido")
     @Test
     void updatePersona() {
         //given
@@ -341,6 +358,8 @@ class PersonaServiceTest {
         final Persona updatedPersona = underTest.updatePersona(id, personaDto);
 
         //then
+        verify(mapper).map(personaDto, personaJere);
+
         ArgumentCaptor<Long> idArgumentCaptor = ArgumentCaptor.forClass(Long.class);
         Mockito.verify(personaRepo).findById(idArgumentCaptor.capture());
         final Long capturedValueIdArgument = idArgumentCaptor.getValue();
@@ -361,6 +380,48 @@ class PersonaServiceTest {
         Assertions.assertThat(updatedPersona.getOcupacion()).isEqualTo(ocupacion);
         Assertions.assertThat(updatedPersona.getDescripcion()).isEqualTo(descripcion);
         Assertions.assertThat(updatedPersona.getImagen()).isEqualTo(imagen);
+    }
+
+    @DisplayName("Debe tirar error al actualizar la persona cuando el id es invalido")
+    @Test
+    void updatePersona_WhenIdIsInvalid_ShouldThrowException() {
+        //given
+        final Long id = 1L;
+        final String errorMsg = String.format("Persona id %d no encontrada.", id);
+        String nombres = "Jeremías";
+        String apellidos = "Calvet";
+        LocalDate fechaNacimiento = LocalDate.of(1990, 1, 1);
+        Nacionalidades nacionalidad = Nacionalidades.ARGENTINA;
+        String email = "jere@test.com";
+        String descripcion = "acerca de test";
+        String imagen = "assets/imagen.jpg";
+        String ocupacion = "tester";
+        var personaDto = new PersonaDto(
+                nombres,
+                apellidos,
+                fechaNacimiento,
+                nacionalidad,
+                email,
+                descripcion,
+                imagen,
+                ocupacion,
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
+        );
+        BDDMockito.given(personaRepo.findById(id))
+                .willReturn(Optional.empty());
+
+        //when
+        //then
+        Assertions.assertThatThrownBy(() -> underTest.updatePersona(id, personaDto))
+                .isInstanceOf(PersonaNotFoundException.class)
+                .hasMessageContaining(errorMsg);
+
+        Mockito.verify(personaRepo, Mockito.never()).save(Mockito.any());
+        Mockito.verify(personaRepo, times(1)).findById(id);
     }
 
     @Test
