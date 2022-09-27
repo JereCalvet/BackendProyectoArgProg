@@ -23,7 +23,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -384,7 +383,7 @@ class PersonaServiceTest {
 
     @DisplayName("Debe tirar error al actualizar la persona cuando el id es invalido")
     @Test
-    void updatePersona_WhenIdIsInvalid_ShouldThrowException() {
+    void updatePersona_WhenIdIsInvalid_ShouldThrowPersonaNotFoundException() {
         //given
         final Long id = 1L;
         final String errorMsg = String.format("Persona id %d no encontrada.", id);
@@ -424,8 +423,42 @@ class PersonaServiceTest {
         Mockito.verify(personaRepo, times(1)).findById(id);
     }
 
+    @DisplayName("Debe devolver la persona del usuario logeado")
     @Test
-    void getCurrentPersona() {
+    void getCurrentPersona_ShouldReturnTheCurrentUserPersona() {
+        //given
+        final Usuario currentUser = new Usuario();
+        final Persona persona = new Persona();
+        currentUser.setPersona(persona);
+
+        BDDMockito.given(usuarioSvc.getCurrentUser())
+                .willReturn(currentUser);
+
+        //when
+        final Persona personaUsuarioLogeado = underTest.getCurrentPersona();
+
+        //then
+        Mockito.verify(usuarioSvc).getCurrentUser();
+        Assertions.assertThat(personaUsuarioLogeado).isEqualTo(persona);
+    }
+
+    @DisplayName("Debe tirar error cuando el usuario logeado no tiene persona")
+    @Test
+    void getCurrentPersona_whenTheCurrentUserDoesNotHaveAPersona_shouldThrowException() {
+        //given
+        final Usuario currentUser = new Usuario();
+        final String username = "jere";
+        currentUser.setUsername(username);
+        final String errorMsg = String.format("El usuario %s no tiene una persona creada.", username);
+
+        BDDMockito.given(usuarioSvc.getCurrentUser())
+                .willReturn(currentUser);
+
+        //when
+        //then
+        Assertions.assertThatThrownBy(() -> underTest.getCurrentPersona())
+                .isInstanceOf(PersonaNotFoundException.class)
+                .hasMessageContaining(errorMsg);
     }
 
     @Test
