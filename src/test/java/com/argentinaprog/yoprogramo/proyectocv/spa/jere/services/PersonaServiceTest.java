@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -461,8 +462,40 @@ class PersonaServiceTest {
                 .hasMessageContaining(errorMsg);
     }
 
+    @DisplayName("Debe obtener un listado de personas correctamente")
     @Test
-    void getAllPersonas() {
+    void getAllPersona_shouldReturnAllThePersonas() {
+        //given
+        final Persona jere = Persona.builder()
+                .nombres("Jere")
+                .apellidos("Calvet")
+                .fechaNacimiento(LocalDate.of(1990, 6, 7))
+                .nacionalidad(Nacionalidades.ARGENTINA)
+                .build();
+
+        final Persona camila = Persona.builder()
+                .nombres("Camila")
+                .apellidos("Test")
+                .fechaNacimiento(LocalDate.of(2000, 6, 7))
+                .nacionalidad(Nacionalidades.ARGENTINA)
+                .build();
+
+        final List<Persona> listadoPersonas = List.of(jere, camila);
+
+        BDDMockito.given(personaRepo.findAll())
+                .willReturn(listadoPersonas);
+
+        //when
+        final List<Persona> allPersonas = underTest.getAllPersonas();
+
+        //then
+        Mockito.verify(personaRepo).findAll();
+
+        Assertions.assertThat(allPersonas)
+                .isNotNull()
+                .isNotEmpty()
+                .isEqualTo(listadoPersonas)
+                .hasSize(2);
     }
 
     @Test
