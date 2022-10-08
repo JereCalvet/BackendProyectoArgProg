@@ -4,8 +4,10 @@ import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.PersonaAlread
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.PersonaNotFoundException;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Nacionalidades;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Persona;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Trabajo;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Usuario;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.PersonaDto;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.TrabajoDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.repositories.PersonaRepository;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,10 +22,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -289,7 +291,7 @@ class PersonaServiceTest {
         Mockito.verify(personaRepo, Mockito.never()).delete(Mockito.any());
     }
 
-    @DisplayName("Debe actualizar la persona cuando es id es valido")
+    @DisplayName("Debe actualizar la persona")
     @Test
     void updatePersona() {
         //given
@@ -499,7 +501,89 @@ class PersonaServiceTest {
     }
 
     @Test
-    void addTrabajo() {
+    @DisplayName("Debe agregar un trabajo a la persona")
+    void addTrabajo_ShouldAddNewTrabajoToThePerson() {
+        //given
+        final Long id = 1L;
+        final String nombres = "Jeremías";
+        final String apellidos = "Calvet";
+        final LocalDate fechaNacimiento = LocalDate.of(1990, 1, 1);
+        final Nacionalidades nacionalidad = Nacionalidades.ARGENTINA;
+        List<Trabajo> experienciasLaborales = new ArrayList<>();
+
+        final var personaJere = Persona.builder()
+                .id(id)
+                .nombres(nombres)
+                .apellidos(apellidos)
+                .fechaNacimiento(fechaNacimiento)
+                .nacionalidad(nacionalidad)
+                .build();
+        personaJere.setExperienciasLaborales(experienciasLaborales);
+
+        final String empresa = "Carrefour";
+        final String cargo = "Tester";
+        final String lugar = "Rio Grande";
+        final LocalDate inicio = LocalDate.of(2010, 1, 1);
+        final LocalDate fin = LocalDate.of(2012, 1, 1);
+        final var trabajoDto = new TrabajoDto(
+                empresa,
+                cargo,
+                lugar,
+                inicio,
+                fin
+        );
+
+        final var trabajoParaAgregar = Trabajo.builder()
+                .cargo(cargo)
+                .empresa(empresa)
+                .desde(inicio)
+                .hasta(fin)
+                .lugar(lugar)
+                .persona(null)
+                .build();
+
+        BDDMockito.given(personaRepo.findById(id))
+                .willReturn(Optional.of(personaJere));
+        BDDMockito.given(mapper.map(trabajoDto, Trabajo.class))
+                .willReturn(trabajoParaAgregar);
+        BDDMockito.given(personaRepo.save(Mockito.any(Persona.class)))
+                .willReturn(personaJere);
+
+        //when
+        final Persona personaJereAfterNewJob = underTest.addTrabajo(id, trabajoDto);
+
+        //then
+        ArgumentCaptor<Long> idArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        Mockito.verify(personaRepo).findById(idArgumentCaptor.capture());
+        final Long idCapturedArgumentValue = idArgumentCaptor.getValue();
+        Assertions.assertThat(idCapturedArgumentValue).isEqualTo(id);
+
+        ArgumentCaptor<TrabajoDto> trabajoDtoArgumentCaptor = ArgumentCaptor.forClass(TrabajoDto.class);
+        Mockito.verify(mapper).map(trabajoDtoArgumentCaptor.capture(), Mockito.eq(Trabajo.class));
+        final TrabajoDto trabajoDtoCapturedArgumentValue = trabajoDtoArgumentCaptor.getValue();
+        Assertions.assertThat(trabajoDtoCapturedArgumentValue).isEqualTo(trabajoDto);
+
+        ArgumentCaptor<Persona> personaArgumentCaptor = ArgumentCaptor.forClass(Persona.class);
+        Mockito.verify(personaRepo).save(personaArgumentCaptor.capture());
+        final Persona personaCapturedArgumentValue = personaArgumentCaptor.getValue();
+        Assertions.assertThat(personaCapturedArgumentValue).isEqualTo(personaJere);
+
+        Assertions.assertThat(personaJereAfterNewJob.getId()).isEqualTo(id);
+        Assertions.assertThat(personaJereAfterNewJob.getNombres()).isEqualTo(nombres);
+        Assertions.assertThat(personaJereAfterNewJob.getApellidos()).isEqualTo(apellidos);
+        Assertions.assertThat(personaJereAfterNewJob.getNacionalidad()).isEqualTo(nacionalidad);
+        Assertions.assertThat(personaJereAfterNewJob.getFechaNacimiento()).isEqualTo(fechaNacimiento);
+        final List<Trabajo> experienciasLaboralesDespuesAgregarTrabajo = personaJereAfterNewJob.getExperienciasLaborales();
+        Assertions.assertThat(experienciasLaboralesDespuesAgregarTrabajo)
+                .isNotNull()
+                .isEqualTo(experienciasLaborales)
+                .isNotEmpty()
+                .hasSize(1)
+                .containsExactly(trabajoParaAgregar);
+
+        Assertions.assertThat(trabajoParaAgregar.getPersona())
+                .isNotNull()
+                .isEqualTo(personaJere);
     }
 
     @Test
