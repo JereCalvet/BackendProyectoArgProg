@@ -500,8 +500,8 @@ class PersonaServiceTest {
                 .hasSize(2);
     }
 
-    @Test
     @DisplayName("Debe agregar un trabajo a la persona")
+    @Test
     void addTrabajo_ShouldAddNewTrabajoToThePerson() {
         //given
         final Long id = 1L;
@@ -584,6 +584,33 @@ class PersonaServiceTest {
         Assertions.assertThat(trabajoParaAgregar.getPersona())
                 .isNotNull()
                 .isEqualTo(personaJere);
+    }
+
+    @DisplayName("Agregar un trabajo debe tirar error, cuando el id de la persona es invalido")
+    @Test
+    void addTrabajo_WhenPersonaDoesNotExist_ShouldThrowPersonaNotFoundException() {
+        //given
+        final Long id = 1L;
+        final var trabajoDto = new TrabajoDto(
+                "Carrefour",
+                "Tester",
+                "Rio Grande",
+                LocalDate.of(2010, 1, 1),
+                LocalDate.of(2012, 1, 1)
+        );
+        final String errorMsg = String.format("Persona id %d no encontrada.", id);
+
+        BDDMockito.given(personaRepo.findById(id))
+                .willReturn(Optional.empty());
+
+        //when
+        //then
+        Assertions.assertThatThrownBy(() -> underTest.addTrabajo(id, trabajoDto))
+                .isInstanceOf(PersonaNotFoundException.class)
+                .hasMessageContaining(errorMsg);
+
+        Mockito.verify(personaRepo, times(1)).findById(id);
+        Mockito.verify(personaRepo, Mockito.never()).save(Mockito.any());
     }
 
     @Test

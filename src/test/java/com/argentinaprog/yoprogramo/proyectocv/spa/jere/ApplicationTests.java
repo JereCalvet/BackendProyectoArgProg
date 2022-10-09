@@ -24,7 +24,7 @@ class ApplicationTests extends AbstractContainerBaseTest {
 
     @Test
     void testContainerLoads() {
-        Assertions.assertThat(MY_SQL_CONTAINER.isRunning());
+        Assertions.assertThat(MY_SQL_CONTAINER.isRunning()).isTrue();
     }
 
 }
