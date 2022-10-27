@@ -2,6 +2,7 @@ package com.argentinaprog.yoprogramo.proyectocv.spa.jere.services;
 
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.PersonaAlreadyExistsException;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.PersonaNotFoundException;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.TrabajoNotFoundException;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Nacionalidades;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Persona;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Trabajo;
@@ -23,9 +24,13 @@ import org.modelmapper.ModelMapper;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -502,7 +507,7 @@ class PersonaServiceTest {
 
     @DisplayName("Debe agregar un trabajo a la persona")
     @Test
-    void addTrabajo_ShouldAddNewTrabajoToThePerson() {
+    void addTrabajo() {
         //given
         final Long id = 1L;
         final String nombres = "Jeremías";
@@ -617,8 +622,151 @@ class PersonaServiceTest {
     void updateTrabajo() {
     }
 
+    @DisplayName("Debe eliminar un trabajo de la persona")
     @Test
     void removeTrabajo() {
+        //given
+        final Long id = 1L;
+        final Long idTrabajo = 2L;
+
+        String nombres = "Jeremías";
+        String apellidos = "Calvet";
+        Nacionalidades nacionalidad = Nacionalidades.ARGENTINA;
+        LocalDate fechaNacimiento = LocalDate.of(1990, 1, 1);
+        final var personaJere = Persona.builder()
+                .id(id)
+                .nombres(nombres)
+                .apellidos(apellidos)
+                .fechaNacimiento(fechaNacimiento)
+                .nacionalidad(nacionalidad)
+                .build();
+
+        final var trabajoOk = Trabajo.builder()
+                .id(1L)
+                .cargo("La Anonima")
+                .empresa("Tester")
+                .desde(LocalDate.of(2008, 1, 1))
+                .hasta(LocalDate.of(2009, 1, 1))
+                .lugar("Rio Grande")
+                .persona(personaJere)
+                .build();
+
+        final var trabajoParaEliminar = Trabajo.builder()
+                .id(idTrabajo)
+                .cargo("Carrrefour")
+                .empresa("Tester")
+                .desde(LocalDate.of(2010, 1, 1))
+                .hasta(LocalDate.of(2012, 1, 1))
+                .lugar("Rio Grande")
+                .persona(personaJere)
+                .build();
+
+        List<Trabajo> experienciasLaborales = Stream.of(trabajoOk, trabajoParaEliminar)
+                .collect(Collectors.toList());
+
+        personaJere.setExperienciasLaborales(experienciasLaborales);
+
+        BDDMockito.given(personaRepo.findById(id))
+                .willReturn(Optional.of(personaJere));
+        BDDMockito.given(personaRepo.save(Mockito.any(Persona.class)))
+                .willReturn(personaJere);
+
+        //when
+        underTest.removeTrabajo(id, idTrabajo);
+
+        //then
+        ArgumentCaptor<Long> idPersonaArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        Mockito.verify(personaRepo).findById(idPersonaArgumentCaptor.capture());
+        final Long idCapturedArgumentValue = idPersonaArgumentCaptor.getValue();
+        Assertions.assertThat(idCapturedArgumentValue).isEqualTo(id);
+
+        ArgumentCaptor<Persona> personaArgumentCaptor = ArgumentCaptor.forClass(Persona.class);
+        Mockito.verify(personaRepo).save(personaArgumentCaptor.capture());
+        final Persona personaCapturedArgumentValue = personaArgumentCaptor.getValue();
+        Assertions.assertThat(personaCapturedArgumentValue).isEqualTo(personaJere);
+
+        Assertions.assertThat(personaJere.getId()).isEqualTo(id);
+        Assertions.assertThat(personaJere.getNombres()).isEqualTo(nombres);
+        Assertions.assertThat(personaJere.getApellidos()).isEqualTo(apellidos);
+        Assertions.assertThat(personaJere.getNacionalidad()).isEqualTo(nacionalidad);
+        Assertions.assertThat(personaJere.getFechaNacimiento()).isEqualTo(fechaNacimiento);
+
+        final List<Trabajo> experienciasLaboralesDespuesEliminarTrabajo = personaJere.getExperienciasLaborales();
+        Assertions.assertThat(experienciasLaboralesDespuesEliminarTrabajo)
+                .isNotNull()
+                .isEqualTo(experienciasLaborales)
+                .isNotEmpty()
+                .hasSize(1)
+                .containsExactly(trabajoOk)
+                .doesNotContain(trabajoParaEliminar);
+    }
+
+    @DisplayName("Eliminar un trabajo debe tirar error, cuando el id de la persona es invalido")
+    @Test
+    void removeTrabajo_WhenPersonaDoesNotExist_ShouldThrowPersonaNotFoundException() {
+        //given
+        final Long id = 1L;
+        final Long idTrabajo = 2L;
+        final Persona persona = Persona.builder()
+                .id(id)
+                .build();
+        List<Trabajo> experienciasLaborales = Stream.of(new Trabajo(), new Trabajo())
+                .collect(Collectors.toList());
+
+        final String errorMsg = String.format("Persona id %d no encontrada.", id);
+
+        BDDMockito.given(personaRepo.findById(id))
+                .willReturn(Optional.empty());
+        //when
+        //then
+        Assertions.assertThatThrownBy(()-> underTest.removeTrabajo(id, idTrabajo))
+                .isInstanceOf(PersonaNotFoundException.class)
+                .hasMessageContaining(errorMsg);
+
+        Assertions.assertThat(experienciasLaborales)
+                .isNotEmpty()
+                .hasSize(2);
+
+        Mockito.verify(personaRepo, times(1)).findById(id);
+        Mockito.verify(personaRepo, Mockito.never()).save(persona);
+    }
+
+    @DisplayName("Eliminar un trabajo debe tirar error, cuando el id del trabajo es invalido")
+    @Test
+    void removeTrabajo_WhenTrabajoDoesNotExist_ShouldThrowTrabajoNotFoundException() {
+        //given
+        final Long id = 1L;
+        final Long idTrabajo = 2L;
+        final Persona persona =
+                Persona.builder()
+                        .id(id)
+                        .nombres("Jeremias")
+                        .apellidos("Calvet")
+                        .fechaNacimiento(LocalDate.of(1990, 1, 1))
+                        .nacionalidad(Nacionalidades.ARGENTINA)
+                        .email("jere@gmail.com")
+                        .descripcion("Descripcion")
+                        .imagen("imagen")
+                        .ocupacion("tester")
+                        .experienciasLaborales(new ArrayList<>())
+                        .build();
+
+        final String errorMsg = String.format("Trabajo id %d no encontrado.", idTrabajo);
+
+        BDDMockito.given(personaRepo.findById(id))
+                .willReturn(Optional.of(persona));
+        //when
+        //then
+        Assertions.assertThatThrownBy(() -> underTest.removeTrabajo(id, idTrabajo))
+                .isInstanceOf(TrabajoNotFoundException.class)
+                .hasMessageContaining(errorMsg);
+
+        Assertions.assertThat(persona.getExperienciasLaborales())
+                .isNotNull()
+                .isEmpty();
+
+        Mockito.verify(personaRepo, times(1)).findById(id);
+        Mockito.verify(personaRepo, Mockito.never()).save(persona);
     }
 
     @Test
