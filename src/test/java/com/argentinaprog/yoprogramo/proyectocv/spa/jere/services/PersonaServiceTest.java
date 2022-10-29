@@ -365,7 +365,7 @@ class PersonaServiceTest {
         final Persona updatedPersona = underTest.updatePersona(id, personaDto);
 
         //then
-        verify(mapper).map(personaDto, personaJere);
+        Mockito.verify(mapper).map(personaDto, personaJere);
 
         ArgumentCaptor<Long> idArgumentCaptor = ArgumentCaptor.forClass(Long.class);
         Mockito.verify(personaRepo).findById(idArgumentCaptor.capture());
@@ -618,8 +618,110 @@ class PersonaServiceTest {
         Mockito.verify(personaRepo, Mockito.never()).save(Mockito.any());
     }
 
+    @DisplayName("Debe actualizar los datos de un trabajo")
     @Test
     void updateTrabajo() {
+        //given
+        final Long id = 1L;
+        final Long idTrabajo = 2L;
+        final var personaJere = Persona.builder()
+                .id(id)
+                .nombres("Jeremías")
+                .apellidos("Calvet")
+                .fechaNacimiento(LocalDate.of(1990, 1, 1))
+                .nacionalidad(Nacionalidades.ARGENTINA)
+                .build();
+
+        final var trabajoParaActualizar = Trabajo.builder()
+                .cargo("Tester")
+                .empresa("Carrefour")
+                .desde(LocalDate.of(2010, 1, 1))
+                .hasta(LocalDate.of(2012, 1, 1))
+                .lugar("Rio Grande")
+                .persona(personaJere)
+                .id(idTrabajo)
+                .build();
+        List<Trabajo> experienciasLaborales = Stream.of(trabajoParaActualizar)
+                .collect(Collectors.toList());
+        personaJere.setExperienciasLaborales(experienciasLaborales);
+
+        final String empresaUpdate = "La Anonima";
+        final String cargoUpdate = "Gestion";
+        final String lugarUpdate = "Tolhuin";
+        final LocalDate inicioUpdate = LocalDate.of(2010, 6, 1);
+        final LocalDate finUpdate = LocalDate.of(2013, 1, 1);
+        final var nuevosDatosTrabajoDto = new TrabajoDto(
+                empresaUpdate,
+                cargoUpdate,
+                lugarUpdate,
+                inicioUpdate,
+                finUpdate
+        );
+        final var trabajoConDatosNuevos = Trabajo.builder()
+                .cargo(cargoUpdate)
+                .empresa(empresaUpdate)
+                .desde(inicioUpdate)
+                .hasta(finUpdate)
+                .lugar(lugarUpdate)
+                .persona(null)
+                .id(idTrabajo)
+                .build();
+
+        BDDMockito.given(personaRepo.findById(id))
+                .willReturn(Optional.of(personaJere));
+        BDDMockito.given(mapper.map(nuevosDatosTrabajoDto, Trabajo.class))
+                .willReturn(trabajoConDatosNuevos);
+        doAnswer((invocation) -> {
+                    var trabajoDatosNuevos = (Trabajo) invocation.getArgument(0);
+                    var trabajoDatosViejos = (Trabajo) invocation.getArgument(1);
+                    trabajoDatosViejos.setEmpresa(trabajoDatosNuevos.getEmpresa());
+                    trabajoDatosViejos.setLugar(trabajoDatosNuevos.getLugar());
+                    trabajoDatosViejos.setCargo(trabajoDatosNuevos.getCargo());
+                    trabajoDatosViejos.setDesde(trabajoDatosNuevos.getDesde());
+                    trabajoDatosViejos.setHasta(trabajoDatosNuevos.getHasta());
+
+                    return null;
+                }
+        ).when(mapper).map(trabajoConDatosNuevos, trabajoParaActualizar);
+        BDDMockito.given(personaRepo.save(Mockito.any(Persona.class)))
+                .willReturn(personaJere);
+        //when
+        final Persona updatedPersona = underTest.updateTrabajo(id, idTrabajo, nuevosDatosTrabajoDto);
+
+        //then
+        ArgumentCaptor<Long> idPersonaArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        Mockito.verify(personaRepo).findById(idPersonaArgumentCaptor.capture());
+        final Long idCapturedArgumentValue = idPersonaArgumentCaptor.getValue();
+        Assertions.assertThat(idCapturedArgumentValue).isEqualTo(id);
+
+        Mockito.verify(mapper).map(nuevosDatosTrabajoDto, Trabajo.class);
+        ArgumentCaptor<TrabajoDto> trabajoDtoArgumentCaptor = ArgumentCaptor.forClass(TrabajoDto.class);
+        Mockito.verify(mapper).map(trabajoDtoArgumentCaptor.capture(), Mockito.eq(Trabajo.class));
+        final TrabajoDto trabajoDtoCapturedArgumentValue = trabajoDtoArgumentCaptor.getValue();
+        Assertions.assertThat(trabajoDtoCapturedArgumentValue).isEqualTo(nuevosDatosTrabajoDto);
+
+        Mockito.verify(mapper).map(trabajoConDatosNuevos, trabajoParaActualizar);
+        Assertions.assertThat(trabajoParaActualizar.getId()).isEqualTo(idTrabajo);
+        Assertions.assertThat(trabajoParaActualizar.getPersona()).isEqualTo(personaJere);
+        Assertions.assertThat(trabajoParaActualizar.getCargo()).isEqualTo(cargoUpdate);
+        Assertions.assertThat(trabajoParaActualizar.getDesde()).isEqualTo(inicioUpdate);
+        Assertions.assertThat(trabajoParaActualizar.getHasta()).isEqualTo(finUpdate);
+        Assertions.assertThat(trabajoParaActualizar.getEmpresa()).isEqualTo(empresaUpdate);
+        Assertions.assertThat(trabajoParaActualizar.getLugar()).isEqualTo(lugarUpdate);
+
+        ArgumentCaptor<Persona> personaArgumentCaptor = ArgumentCaptor.forClass(Persona.class);
+        Mockito.verify(personaRepo).save(personaArgumentCaptor.capture());
+        final Persona capturedValuePersonaArgument = personaArgumentCaptor.getValue();
+        Assertions.assertThat(capturedValuePersonaArgument).isEqualTo(personaJere);
+
+        Assertions.assertThat(updatedPersona).isEqualTo(personaJere);
+        final List<Trabajo> experienciasLaboralesDespuesActualizarTrabajo = updatedPersona.getExperienciasLaborales();
+        Assertions.assertThat(experienciasLaboralesDespuesActualizarTrabajo)
+                .isNotNull()
+                .isEqualTo(experienciasLaborales)
+                .isNotEmpty()
+                .hasSize(1)
+                .containsExactly(trabajoParaActualizar);
     }
 
     @DisplayName("Debe eliminar un trabajo de la persona")
@@ -719,7 +821,7 @@ class PersonaServiceTest {
                 .willReturn(Optional.empty());
         //when
         //then
-        Assertions.assertThatThrownBy(()-> underTest.removeTrabajo(id, idTrabajo))
+        Assertions.assertThatThrownBy(() -> underTest.removeTrabajo(id, idTrabajo))
                 .isInstanceOf(PersonaNotFoundException.class)
                 .hasMessageContaining(errorMsg);
 
@@ -737,19 +839,18 @@ class PersonaServiceTest {
         //given
         final Long id = 1L;
         final Long idTrabajo = 2L;
-        final Persona persona =
-                Persona.builder()
-                        .id(id)
-                        .nombres("Jeremias")
-                        .apellidos("Calvet")
-                        .fechaNacimiento(LocalDate.of(1990, 1, 1))
-                        .nacionalidad(Nacionalidades.ARGENTINA)
-                        .email("jere@gmail.com")
-                        .descripcion("Descripcion")
-                        .imagen("imagen")
-                        .ocupacion("tester")
-                        .experienciasLaborales(new ArrayList<>())
-                        .build();
+        final Persona persona = Persona.builder()
+                .id(id)
+                .nombres("Jeremias")
+                .apellidos("Calvet")
+                .fechaNacimiento(LocalDate.of(1990, 1, 1))
+                .nacionalidad(Nacionalidades.ARGENTINA)
+                .email("jere@gmail.com")
+                .descripcion("Descripcion")
+                .imagen("imagen")
+                .ocupacion("tester")
+                .experienciasLaborales(new ArrayList<>())
+                .build();
 
         final String errorMsg = String.format("Trabajo id %d no encontrado.", idTrabajo);
 
