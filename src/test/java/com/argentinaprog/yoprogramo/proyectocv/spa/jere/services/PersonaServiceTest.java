@@ -724,6 +724,37 @@ class PersonaServiceTest {
                 .containsExactly(trabajoParaActualizar);
     }
 
+    @DisplayName("Actualizar un trabajo debe tirar error, cuando el id del trabajo es invalido")
+    @Test
+    void updateTrabajo_WhenTrabajoDoesNotExist_ShouldThrowTrabajoNotFoundException() {
+        //given
+        final Long id = 1L;
+        final Long idTrabajo = 2L;
+        final var trabajoDto = new TrabajoDto(
+                "Carrefour",
+                "Tester",
+                "Rio Grande",
+                LocalDate.of(2010, 1, 1),
+                LocalDate.of(2012, 1, 1)
+        );
+        final Persona personaSinExperienciaLaboral = new Persona();
+        personaSinExperienciaLaboral.setExperienciasLaborales(new ArrayList<>());
+
+        BDDMockito.given(personaRepo.findById(id))
+                .willReturn(Optional.of(personaSinExperienciaLaboral));
+
+        final String errorMsg = String.format("Trabajo id %d no encontrado.", idTrabajo);
+
+        //when
+        //then
+        Assertions.assertThatThrownBy(() -> underTest.updateTrabajo(id, idTrabajo, trabajoDto))
+                .isInstanceOf(TrabajoNotFoundException.class)
+                .hasMessageContaining(errorMsg);
+
+        Mockito.verify(personaRepo, times(1)).findById(id);
+        Mockito.verify(personaRepo, Mockito.never()).save(Mockito.any());
+    }
+
     @DisplayName("Debe eliminar un trabajo de la persona")
     @Test
     void removeTrabajo() {
