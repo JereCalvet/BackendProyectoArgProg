@@ -3,10 +3,8 @@ package com.argentinaprog.yoprogramo.proyectocv.spa.jere.services;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.PersonaAlreadyExistsException;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.PersonaNotFoundException;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.TrabajoNotFoundException;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Nacionalidades;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Persona;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Trabajo;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Usuario;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.*;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.EducacionDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.PersonaDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.TrabajoDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.repositories.PersonaRepository;
@@ -24,13 +22,11 @@ import org.modelmapper.ModelMapper;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -615,6 +611,7 @@ class PersonaServiceTest {
                 .hasMessageContaining(errorMsg);
 
         Mockito.verify(personaRepo, times(1)).findById(id);
+        Mockito.verify(mapper, Mockito.never()).map(Mockito.any(), Mockito.any());
         Mockito.verify(personaRepo, Mockito.never()).save(Mockito.any());
     }
 
@@ -901,8 +898,113 @@ class PersonaServiceTest {
         Mockito.verify(personaRepo, Mockito.never()).save(persona);
     }
 
+    @DisplayName("Debe agregar un estudio a la persona")
     @Test
     void addEstudio() {
+        //given
+        final Long id = 1L;
+        final String nombres = "Jeremías";
+        final String apellidos = "Calvet";
+        final LocalDate fechaNacimiento = LocalDate.of(1990, 1, 1);
+        final Nacionalidades nacionalidad = Nacionalidades.ARGENTINA;
+        List<Educacion> estudios = new ArrayList<>();
+
+        final var personaJere = Persona.builder()
+                .id(id)
+                .nombres(nombres)
+                .apellidos(apellidos)
+                .fechaNacimiento(fechaNacimiento)
+                .nacionalidad(nacionalidad)
+                .build();
+        personaJere.setEstudios(estudios);
+
+        final String institucion = "Secundaria Comercio N° 15";
+        final String titulo = "A.S.D. Comercio";
+        final String lugar = "Rio Grande";
+        final ProgresoEducacion progreso = ProgresoEducacion.CURSANDO;
+        final var estudioDto = new EducacionDto(
+                institucion,
+                titulo,
+                lugar,
+                progreso
+        );
+        final var estudioParaAgregar = Educacion.builder()
+                .estado(progreso)
+                .titulo(titulo)
+                .lugar(lugar)
+                .institucion(institucion)
+                .persona(null)
+                .build();
+
+        BDDMockito.given(personaRepo.findById(id))
+                .willReturn(Optional.of(personaJere));
+        BDDMockito.given(mapper.map(estudioDto, Educacion.class))
+                .willReturn(estudioParaAgregar);
+        BDDMockito.given(personaRepo.save(Mockito.any(Persona.class)))
+                .willReturn(personaJere);
+
+        //when
+        final Persona personaJereAfterNewStudy = underTest.addEstudio(id, estudioDto);
+
+        //then
+        ArgumentCaptor<Long> idArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        Mockito.verify(personaRepo).findById(idArgumentCaptor.capture());
+        final Long idCapturedArgumentValue = idArgumentCaptor.getValue();
+        Assertions.assertThat(idCapturedArgumentValue).isEqualTo(id);
+
+        ArgumentCaptor<EducacionDto> estudioDtoArgumentCaptor = ArgumentCaptor.forClass(EducacionDto.class);
+        Mockito.verify(mapper).map(estudioDtoArgumentCaptor.capture(), Mockito.eq(Educacion.class));
+        final EducacionDto estudioDtoCapturedArgumentValue = estudioDtoArgumentCaptor.getValue();
+        Assertions.assertThat(estudioDtoCapturedArgumentValue).isEqualTo(estudioDto);
+
+        ArgumentCaptor<Persona> personaArgumentCaptor = ArgumentCaptor.forClass(Persona.class);
+        Mockito.verify(personaRepo).save(personaArgumentCaptor.capture());
+        final Persona personaCapturedArgumentValue = personaArgumentCaptor.getValue();
+        Assertions.assertThat(personaCapturedArgumentValue).isEqualTo(personaJere);
+
+        Assertions.assertThat(personaJereAfterNewStudy.getId()).isEqualTo(id);
+        Assertions.assertThat(personaJereAfterNewStudy.getNombres()).isEqualTo(nombres);
+        Assertions.assertThat(personaJereAfterNewStudy.getApellidos()).isEqualTo(apellidos);
+        Assertions.assertThat(personaJereAfterNewStudy.getNacionalidad()).isEqualTo(nacionalidad);
+        Assertions.assertThat(personaJereAfterNewStudy.getFechaNacimiento()).isEqualTo(fechaNacimiento);
+        final List<Educacion> estudiosDespuesAgregarEstudio = personaJereAfterNewStudy.getEstudios();
+        Assertions.assertThat(estudiosDespuesAgregarEstudio)
+                .isNotNull()
+                .isEqualTo(estudios)
+                .isNotEmpty()
+                .hasSize(1)
+                .containsExactly(estudioParaAgregar);
+
+        Assertions.assertThat(estudioParaAgregar.getPersona())
+                .isNotNull()
+                .isEqualTo(personaJere);
+    }
+
+    @DisplayName("Agregar un estudio debe tirar error, cuando el id de la persona es invalido")
+    @Test
+    void addEstudio_WhenPersonaDoesNotExist_ShouldThrowPersonaNotFoundException() {
+        //given
+        final Long id = 1L;
+        final var estudioDto = new EducacionDto(
+                "Secundaria Comercio N° 15",
+                "A.S.D. Comercio",
+                "Rio Grande",
+                ProgresoEducacion.CURSANDO
+        );
+        final String errorMsg = String.format("Persona id %d no encontrada.", id);
+
+        BDDMockito.given(personaRepo.findById(id))
+                .willReturn(Optional.empty());
+
+        //when
+        //then
+        Assertions.assertThatThrownBy(() -> underTest.addEstudio(id, estudioDto))
+                .isInstanceOf(PersonaNotFoundException.class)
+                .hasMessageContaining(errorMsg);
+
+        Mockito.verify(personaRepo, times(1)).findById(id);
+        Mockito.verify(mapper, Mockito.never()).map(Mockito.any(), Mockito.any());
+        Mockito.verify(personaRepo, Mockito.never()).save(Mockito.any());
     }
 
     @Test
