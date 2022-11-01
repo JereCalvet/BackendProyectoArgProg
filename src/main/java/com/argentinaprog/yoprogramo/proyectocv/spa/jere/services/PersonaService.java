@@ -40,12 +40,12 @@ public class PersonaService {
 
     @Transactional
     public Persona addPersona(PersonaDto personaDto) {
-        var persona = mapper.map(personaDto, Persona.class);
         final Usuario currentUser = this.usuarioSvc.getCurrentUser();
 
         if (Objects.nonNull(currentUser.getPersona())) {
             throw new PersonaAlreadyExistsException(currentUser.getUsername());
         }
+        var persona = mapper.map(personaDto, Persona.class);
         currentUser.setPersona(persona);
         return personaRepo.save(persona);
     }

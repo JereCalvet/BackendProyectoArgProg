@@ -225,6 +225,7 @@ class PersonaServiceTest {
                 .isInstanceOf(PersonaAlreadyExistsException.class)
                 .hasMessageContaining(errorMsg);
 
+        Mockito.verify(mapper, Mockito.never()).map(Mockito.any(), Mockito.any());
         Mockito.verify(personaRepo, Mockito.never()).save(Mockito.any());
     }
 
@@ -289,6 +290,7 @@ class PersonaServiceTest {
                 .isInstanceOf(PersonaNotFoundException.class)
                 .hasMessageContaining(errorMsg);
 
+        Mockito.verify(personaRepo, times(1)).findById(id);
         Mockito.verify(personaRepo, Mockito.never()).delete(Mockito.any());
     }
 
@@ -423,8 +425,9 @@ class PersonaServiceTest {
                 .isInstanceOf(PersonaNotFoundException.class)
                 .hasMessageContaining(errorMsg);
 
-        Mockito.verify(personaRepo, Mockito.never()).save(Mockito.any());
         Mockito.verify(personaRepo, times(1)).findById(id);
+        Mockito.verify(mapper, Mockito.never()).map(Mockito.any(), Mockito.any());
+        Mockito.verify(personaRepo, Mockito.never()).save(Mockito.any());
     }
 
     @DisplayName("Debe devolver la persona del usuario logeado")
@@ -749,6 +752,35 @@ class PersonaServiceTest {
                 .hasMessageContaining(errorMsg);
 
         Mockito.verify(personaRepo, times(1)).findById(id);
+        Mockito.verify(mapper, times(1)).map(Mockito.any(), Mockito.any());
+        Mockito.verify(personaRepo, Mockito.never()).save(Mockito.any());
+    }
+
+    @DisplayName("Actualizar un trabajo debe tirar error, cuando el id de la persona es invalido")
+    @Test
+    void updateTrabajo_WhenPersonaDoesNotExist_ShouldThrowPersonaNotFoundException() {
+        //given
+        final Long id = 1L;
+        final Long idTrabajo = 1L;
+        final var trabajoDto = new TrabajoDto(
+                "Carrefour",
+                "Tester",
+                "Rio Grande",
+                LocalDate.of(2010, 1, 1),
+                LocalDate.of(2012, 1, 1)
+        );
+        final String errorMsg = String.format("Persona id %d no encontrada.", id);
+
+        BDDMockito.given(personaRepo.findById(id))
+                .willReturn(Optional.empty());
+        //when
+        //then
+        Assertions.assertThatThrownBy(() -> underTest.updateTrabajo(id, idTrabajo, trabajoDto))
+                .isInstanceOf(PersonaNotFoundException.class)
+                .hasMessageContaining(errorMsg);
+
+        Mockito.verify(personaRepo, times(1)).findById(id);
+        Mockito.verify(mapper, Mockito.never()).map(Mockito.any(), Mockito.any());
         Mockito.verify(personaRepo, Mockito.never()).save(Mockito.any());
     }
 
