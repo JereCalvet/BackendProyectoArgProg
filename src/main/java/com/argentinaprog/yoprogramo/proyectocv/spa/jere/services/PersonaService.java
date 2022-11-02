@@ -201,7 +201,7 @@ public class PersonaService {
 
         final List<Proyecto> proyectos = persona.getProyectos();
         if (proyectos.stream().noneMatch(proyecto -> Objects.equals(proyecto.getId(), idProyecto))) {
-            throw new EducacionNotFoundException(idProyecto);
+            throw new ProyectoNotFoundException(idProyecto);
         }
         proyectos.removeIf(trabajo -> trabajo.getId().equals(idProyecto));
 
