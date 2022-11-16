@@ -5,7 +5,6 @@ import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.PersonaNotFou
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.UsuarioNotFoundException;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Nacionalidades;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Persona;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Usuario;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.PersonaDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.security.JwtConfig;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.security.PasswordConfig;
@@ -31,7 +30,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -416,8 +414,8 @@ class PersonaControllerTest {
 
         ArgumentCaptor<Long> idArgumentCaptor = ArgumentCaptor.forClass(Long.class);
         ArgumentCaptor<PersonaDto> personDtoArgumentCaptor = ArgumentCaptor.forClass(PersonaDto.class);
-        BDDMockito.given(personaSvc.updatePersona(idArgumentCaptor.capture(), personDtoArgumentCaptor.capture()))
-            .willReturn(updatedPersona);
+        given(personaSvc.updatePersona(idArgumentCaptor.capture(), personDtoArgumentCaptor.capture()))
+                .willReturn(updatedPersona);
 
         //when
         //then
@@ -527,7 +525,7 @@ class PersonaControllerTest {
 
         ArgumentCaptor<Long> idArgumentCaptor = ArgumentCaptor.forClass(Long.class);
         ArgumentCaptor<PersonaDto> personDtoArgumentCaptor = ArgumentCaptor.forClass(PersonaDto.class);
-        BDDMockito.given(personaSvc.updatePersona(idArgumentCaptor.capture(), personDtoArgumentCaptor.capture()))
+        given(personaSvc.updatePersona(idArgumentCaptor.capture(), personDtoArgumentCaptor.capture()))
                 .willThrow(new PersonaNotFoundException(nonExistenId));
 
         //when
@@ -559,5 +557,76 @@ class PersonaControllerTest {
         Assertions.assertThat(dtoCapturedRequestValue.getDescripcion()).isEqualTo(descripcion);
         Assertions.assertThat(dtoCapturedRequestValue.getImagen()).isEqualTo(imagen);
         Assertions.assertThat(dtoCapturedRequestValue.getOcupacion()).isEqualTo(ocupacion);
+    }
+
+    @DisplayName("Should return a 204 status code when current authorized user deleted a persona")
+    @WithMockUser()
+    @Test
+    void deletePersona_WhenPersonaIsDeleted_ShouldReturn204() {
+        //given
+        final Long personIdToDelete = 1L;
+        ArgumentCaptor<Long> idArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        Mockito.doNothing().when(personaSvc)
+                .deletePersona((idArgumentCaptor.capture()));
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                    delete(API_PERSONA_BASE_URL + "/delete/{id}", personIdToDelete))
+                    .andExpect(status().isNoContent());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        Mockito.verify(personaSvc, Mockito.times(1)).deletePersona(personIdToDelete);
+        Assertions.assertThat(idArgumentCaptor.getValue()).isEqualTo(personIdToDelete);
+    }
+
+    @DisplayName("Should return a 403 status code when user is unauthorized and shouldn't delete persona")
+    @Test
+    void deletePersona_WhenUnauthorized_ShouldNotDeleteReturn403() {
+        //given
+        final Long personIdToDelete = 1L;
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                    delete(API_PERSONA_BASE_URL + "/delete/{id}" , personIdToDelete))
+                    .andExpect(status().isForbidden());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        Mockito.verify(personaSvc, Mockito.never()).deletePersona(Mockito.anyLong());
+    }
+
+    @DisplayName("Should return 404 when persona id is invalid and shouldn't delete persona")
+    @WithMockUser()
+    @Test
+    void deletePersona_WhenNonExistentId_ShouldNotDeleteReturn404() {
+        //given
+        final Long nonExistenId = 3L;
+        final String ERROR_MSG = String.format("Persona id %d no encontrada.", nonExistenId);
+
+        BDDMockito.willThrow(new PersonaNotFoundException(nonExistenId))
+                .given(personaSvc).deletePersona(nonExistenId);
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            delete(API_PERSONA_BASE_URL + "/delete/{id}", nonExistenId)
+                                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(PersonaNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG));
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
     }
 }
