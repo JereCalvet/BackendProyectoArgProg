@@ -30,6 +30,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -573,7 +574,7 @@ class PersonaControllerTest {
         //then
         try {
             mockMvc.perform(
-                    delete(API_PERSONA_BASE_URL + "/delete/{id}", personIdToDelete))
+                            delete(API_PERSONA_BASE_URL + "/delete/{id}", personIdToDelete))
                     .andExpect(status().isNoContent());
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
@@ -593,7 +594,7 @@ class PersonaControllerTest {
         //then
         try {
             mockMvc.perform(
-                    delete(API_PERSONA_BASE_URL + "/delete/{id}" , personIdToDelete))
+                            delete(API_PERSONA_BASE_URL + "/delete/{id}", personIdToDelete))
                     .andExpect(status().isForbidden());
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
@@ -627,6 +628,180 @@ class PersonaControllerTest {
 
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    @DisplayName("Should return 200 and all personas when user is authorized")
+    @WithMockUser
+    @Test
+    void getAllPersonas_WhenUserIsAuthorized_ShouldReturn200AllPersonas() {
+        //given
+        final var persona1 = Persona.builder()
+                .id(1L)
+                .nombres("Jere")
+                .apellidos("Calvet")
+                .build();
+
+        final var persona2 = Persona.builder()
+                .id(2L)
+                .nombres("Nahuel")
+                .apellidos("Calvet")
+                .build();
+        final var personas = List.of(persona1, persona2);
+
+        given(personaSvc.getAllPersonas())
+                .willReturn(personas);
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            get(API_PERSONA_BASE_URL + "/all"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$", hasSize(2)))
+                    .andExpect(jsonPath("$[0].id").value(persona1.getId()))
+                    .andExpect(jsonPath("$[0].nombres").value(persona1.getNombres()))
+                    .andExpect(jsonPath("$[0].apellidos").value(persona1.getApellidos()))
+                    .andExpect(jsonPath("$[1].id").value(persona2.getId()))
+                    .andExpect(jsonPath("$[1].nombres").value(persona2.getNombres()))
+                    .andExpect(jsonPath("$[1].apellidos").value(persona2.getApellidos()));
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw any exception");
+        }
+
+        Mockito.verify(personaSvc, Mockito.times(1)).getAllPersonas();
+    }
+
+    @DisplayName("Should return 200 and all personas when user is unauthorized")
+    @Test
+    void getAllPersonas_WhenUserIsUnauthorized_ShouldReturn200AllPersonas() {
+        //given
+        final var persona1 = Persona.builder()
+                .id(1L)
+                .nombres("Jere")
+                .apellidos("Calvet")
+                .build();
+
+        final var persona2 = Persona.builder()
+                .id(2L)
+                .nombres("Nahuel")
+                .apellidos("Calvet")
+                .build();
+        final var personas = List.of(persona1, persona2);
+
+        given(personaSvc.getAllPersonas())
+                .willReturn(personas);
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            get(API_PERSONA_BASE_URL + "/all"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$", hasSize(2)))
+                    .andExpect(jsonPath("$[0].id").value(persona1.getId()))
+                    .andExpect(jsonPath("$[0].nombres").value(persona1.getNombres()))
+                    .andExpect(jsonPath("$[0].apellidos").value(persona1.getApellidos()))
+                    .andExpect(jsonPath("$[1].id").value(persona2.getId()))
+                    .andExpect(jsonPath("$[1].nombres").value(persona2.getNombres()))
+                    .andExpect(jsonPath("$[1].apellidos").value(persona2.getApellidos()));
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw any exception");
+        }
+
+        Mockito.verify(personaSvc, Mockito.times(1)).getAllPersonas();
+    }
+
+    @DisplayName("Should return 200 and the current when user is authorized and has a person")
+    @WithMockUser
+    @Test
+    void currentPersona_WhenUserIsAuthorizedAndHasPersona_ShouldReturn200CurrentPersona() {
+        //given
+        long personId = 1L;
+        String nombres = "Jere";
+        String apellidos = "Calvet";
+        LocalDate fechaNacimiento = LocalDate.of(1990, 6, 7);
+        Nacionalidades nacionalidad = Nacionalidades.ARGENTINA;
+        final var currentPerson = Persona.builder()
+                        .id(personId)
+                        .nombres(nombres)
+                        .apellidos(apellidos)
+                        .fechaNacimiento(fechaNacimiento)
+                        .nacionalidad(nacionalidad)
+                        .build();
+
+        given(personaSvc.getCurrentPersona())
+                .willReturn(currentPerson);
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                        get(API_PERSONA_BASE_URL + "/current"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("id").value(personId))
+                    .andExpect(jsonPath("nombres").value(nombres))
+                    .andExpect(jsonPath("apellidos").value(apellidos))
+                    .andExpect(jsonPath("fechaNacimiento").value(fechaNacimiento.format(DateTimeFormatter.ISO_DATE)))
+                    .andExpect(jsonPath("nacionalidad").value(nacionalidad.toString()));
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw any exception");
+        }
+    }
+
+    @DisplayName("Should return 202 when current user can't be found because is unauthorized or is not in DB")
+    @Test
+    void currentPersona_WhenUserIsUnauthorizedOrCanNotBeFound_ShouldReturn202() {
+        //given
+        final String ERROR_MSG = "Usuario no encontrado.";
+
+        BDDMockito.willThrow(new UsuarioNotFoundException())
+                .given(personaSvc).getCurrentPersona();
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            get(API_PERSONA_BASE_URL + "/current"))
+                    .andExpect(status().isAccepted())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(UsuarioNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG));
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw any exception");
+        }
+    }
+
+    @DisplayName("Should return 404 when current user hasn't created his person yet")
+    @WithMockUser(username = "jere@test.com")
+    @Test
+    void currentPersona_WhenUserDoesNotHavePersona_ShouldReturn404() {
+        //given
+        final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        final String username = authentication.getName();
+        final String ERROR_MSG = String.format("El usuario %s no tiene una persona creada.", username);
+
+        BDDMockito.willThrow(new PersonaNotFoundException(username))
+                .given(personaSvc).getCurrentPersona();
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            get(API_PERSONA_BASE_URL + "/current"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(PersonaNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG));
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw any exception");
         }
     }
 }
