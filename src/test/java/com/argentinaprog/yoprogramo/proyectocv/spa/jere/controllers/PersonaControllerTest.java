@@ -5,7 +5,9 @@ import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.PersonaNotFou
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.UsuarioNotFoundException;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Nacionalidades;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Persona;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.Trabajo;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.PersonaDto;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.TrabajoDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.security.JwtConfig;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.security.PasswordConfig;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.services.PersonaService;
@@ -29,9 +31,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -727,12 +732,12 @@ class PersonaControllerTest {
         LocalDate fechaNacimiento = LocalDate.of(1990, 6, 7);
         Nacionalidades nacionalidad = Nacionalidades.ARGENTINA;
         final var currentPerson = Persona.builder()
-                        .id(personId)
-                        .nombres(nombres)
-                        .apellidos(apellidos)
-                        .fechaNacimiento(fechaNacimiento)
-                        .nacionalidad(nacionalidad)
-                        .build();
+                .id(personId)
+                .nombres(nombres)
+                .apellidos(apellidos)
+                .fechaNacimiento(fechaNacimiento)
+                .nacionalidad(nacionalidad)
+                .build();
 
         given(personaSvc.getCurrentPersona())
                 .willReturn(currentPerson);
@@ -741,7 +746,7 @@ class PersonaControllerTest {
         //then
         try {
             mockMvc.perform(
-                        get(API_PERSONA_BASE_URL + "/current"))
+                            get(API_PERSONA_BASE_URL + "/current"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("id").value(personId))
                     .andExpect(jsonPath("nombres").value(nombres))
@@ -802,6 +807,176 @@ class PersonaControllerTest {
 
         } catch (Exception e) {
             Assertions.fail("Should not throw any exception");
+        }
+    }
+
+    @DisplayName("Should return 201 add the trabajo when the persona exists")
+    @WithMockUser()
+    @Test
+    void addTrabajo_WhenPersonaExists_ShouldReturn201UpdatedPersona() {
+        //given
+        final var empresa = "Carrefour";
+        final var cargo = "Tester";
+        final var lugar = "Rio Grande";
+        final var desde = LocalDate.of(2010, 1, 1);
+        final var hasta = LocalDate.of(2012, 1, 1);
+        final var trabajoDto = new TrabajoDto(
+                empresa,
+                cargo,
+                lugar,
+                desde,
+                hasta
+        );
+        final var idTrabajo = 2L;
+        final var trabajoAdded = Trabajo.builder()
+                .id(idTrabajo)
+                .empresa(empresa)
+                .cargo(cargo)
+                .lugar(lugar)
+                .desde(desde)
+                .hasta(hasta)
+                .build();
+        List<Trabajo> experienciasLaborales = Stream.of(trabajoAdded)
+                .collect(Collectors.toList());
+
+        final var personId = 1L;
+        final var nombres = "Jere";
+        final var apellidos = "Calvet";
+        final var fechaNacimiento = LocalDate.now();
+        final var nacionalidad = Nacionalidades.ARGENTINA;
+        final var email = "test@test.com";
+        final var descripcion = "descripción";
+        final var imagen = "test.jpg";
+        final var ocupacion = "Ocupación";
+        var personaWithTrabajoAdded = Persona.builder()
+                .id(personId)
+                .nombres(nombres)
+                .apellidos(apellidos)
+                .fechaNacimiento(fechaNacimiento)
+                .nacionalidad(nacionalidad)
+                .email(email)
+                .descripcion(descripcion)
+                .imagen(imagen)
+                .ocupacion(ocupacion)
+                .experienciasLaborales(experienciasLaborales)
+                .habilidades(List.of())
+                .estudios(List.of())
+                .proyectos(List.of())
+                .build();
+
+        ArgumentCaptor<TrabajoDto> trabajoRequestDtoArgumentCaptor = ArgumentCaptor.forClass(TrabajoDto.class);
+        ArgumentCaptor<Long> idPersonaRequestArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        BDDMockito.given(personaSvc.addTrabajo(
+                        idPersonaRequestArgumentCaptor.capture(),
+                        trabajoRequestDtoArgumentCaptor.capture()))
+                .willReturn(personaWithTrabajoAdded);
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            post(API_PERSONA_BASE_URL + "/add/{id}/trabajos/", personId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(trabajoDto)))
+                    .andExpect(status().isCreated())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("id").value(personId))
+                    .andExpect(jsonPath("nombres").value(nombres))
+                    .andExpect(jsonPath("apellidos").value(apellidos))
+                    .andExpect(jsonPath("fechaNacimiento").value(fechaNacimiento.toString()))
+                    .andExpect(jsonPath("nacionalidad").value(nacionalidad.toString()))
+                    .andExpect(jsonPath("email").value(email))
+                    .andExpect(jsonPath("descripcion").value(descripcion))
+                    .andExpect(jsonPath("ocupacion").value(ocupacion))
+                    .andExpect(jsonPath("imagen").value(imagen))
+                    .andExpect(jsonPath("ocupacion").value(ocupacion))
+                    .andExpect(jsonPath("experienciasLaborales", hasSize(1)))
+                    .andExpect(jsonPath("$.experienciasLaborales[:1].id").value((int) idTrabajo))
+                    .andExpect(jsonPath("$.experienciasLaborales[:1].empresa").value(empresa))
+                    .andExpect(jsonPath("$.experienciasLaborales[:1].cargo").value(cargo))
+                    .andExpect(jsonPath("$.experienciasLaborales[:1].lugar").value(lugar))
+                    .andExpect(jsonPath("$.experienciasLaborales[:1].desde").value(desde.toString()))
+                    .andExpect(jsonPath("$.experienciasLaborales[:1].hasta").value(hasta.toString()));
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        final Long idPersonaCapturedRequestValue = idPersonaRequestArgumentCaptor.getValue();
+        Assertions.assertThat(idPersonaCapturedRequestValue).isEqualTo(personId);
+
+        final TrabajoDto trabajoDtoCapturedRequestValue = trabajoRequestDtoArgumentCaptor.getValue();
+        Assertions.assertThat(trabajoDtoCapturedRequestValue.getCargo()).isEqualTo(cargo);
+        Assertions.assertThat(trabajoDtoCapturedRequestValue.getEmpresa()).isEqualTo(empresa);
+        Assertions.assertThat(trabajoDtoCapturedRequestValue.getDesde()).isEqualTo(desde);
+        Assertions.assertThat(trabajoDtoCapturedRequestValue.getHasta()).isEqualTo(hasta);
+        Assertions.assertThat(trabajoDtoCapturedRequestValue.getLugar()).isEqualTo(lugar);
+
+        Mockito.verify(personaSvc, times(1)).addTrabajo(Mockito.any(), Mockito.any());
+        Mockito.verifyNoMoreInteractions(personaSvc);
+    }
+
+    @DisplayName("Should return a 403 status code when user is unauthorized and shouldn't add trabajo")
+    @Test
+    void addTrabajo_WhenUnauthorized_ShouldNotAddTrabajoReturn403() {
+        //given
+        final Long personIdToAddTrabajo = 1L;
+        final var trabajoToAddDto = new TrabajoDto(
+                "Carrefour",
+                "Tester",
+                "Rio Grande",
+                LocalDate.of(2010, 1, 1),
+                LocalDate.of(2012, 1, 1)
+        );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            post(API_PERSONA_BASE_URL + "/add/{id}/trabajos/", personIdToAddTrabajo)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(trabajoToAddDto)))
+                    .andExpect(status().isForbidden());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        Mockito.verify(personaSvc, Mockito.never()).addTrabajo(Mockito.any(), Mockito.any());
+    }
+
+    @DisplayName("Should return 404 when persona id is invalid and shouldn't add trabajo")
+    @WithMockUser()
+    @Test
+    void addTrabajo_WhenPersonaDoesNotExist_ShouldNotAddTrabajoReturn403() {
+        //given
+        final Long personIdToAddTrabajo = 1L;
+        final String ERROR_MSG = String.format("Persona id %d no encontrada.", personIdToAddTrabajo);
+
+        final var trabajoToAddDto = new TrabajoDto(
+                "Carrefour",
+                "Tester",
+                "Rio Grande",
+                LocalDate.of(2010, 1, 1),
+                LocalDate.of(2012, 1, 1)
+        );
+
+        BDDMockito.given(personaSvc.addTrabajo(Mockito.anyLong(), Mockito.any(TrabajoDto.class)))
+                .willThrow(new PersonaNotFoundException(personIdToAddTrabajo));
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            post(API_PERSONA_BASE_URL + "/add/{id}/trabajos/", personIdToAddTrabajo)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(trabajoToAddDto)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(PersonaNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG));
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
         }
     }
 }

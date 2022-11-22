@@ -39,7 +39,7 @@ public class PersonaController {
         return new ResponseEntity<>(personaSvc.updatePersona(id, personaToUpdate), HttpStatus.OK);
     }
 
-    @PostMapping("/delete/{id}")
+    @DeleteMapping("/delete/{id}")
     public ResponseEntity<Void> deletePersona(@PathVariable("id") Long id) {
         personaSvc.deletePersona(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
