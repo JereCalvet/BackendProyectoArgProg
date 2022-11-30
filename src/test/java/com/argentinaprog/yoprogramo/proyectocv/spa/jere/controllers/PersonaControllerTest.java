@@ -39,6 +39,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(value = PersonaController.class)
@@ -81,7 +82,8 @@ class PersonaControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("nombres").value(nombres))
                     .andExpect(jsonPath("apellidos").value(apellidos))
-                    .andExpect(jsonPath("id").value(id));
+                    .andExpect(jsonPath("id").value(id))
+                    .andDo(print());
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
         }
@@ -107,7 +109,8 @@ class PersonaControllerTest {
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(PersonaNotFoundException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
-                            .isEqualTo(ERROR_MSG));
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
@@ -138,7 +141,8 @@ class PersonaControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("nombres").value(nombres))
                     .andExpect(jsonPath("apellidos").value(apellidos))
-                    .andExpect(jsonPath("id").value(id));
+                    .andExpect(jsonPath("id").value(id))
+                    .andDo(print());
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
         }
@@ -163,7 +167,8 @@ class PersonaControllerTest {
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(PersonaNotFoundException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
-                            .isEqualTo(ERROR_MSG));
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
@@ -233,7 +238,8 @@ class PersonaControllerTest {
                     .andExpect(jsonPath("descripcion").value(descripcion))
                     .andExpect(jsonPath("imagen").value(imagen))
                     .andExpect(jsonPath("ocupacion").value(ocupacion))
-                    .andExpect(jsonPath("email").value(email));
+                    .andExpect(jsonPath("email").value(email))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
@@ -277,7 +283,8 @@ class PersonaControllerTest {
                             post(API_PERSONA_BASE_URL + "/add")
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(personToAdd)))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isForbidden())
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
@@ -325,7 +332,8 @@ class PersonaControllerTest {
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(PersonaAlreadyExistsException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
-                            .isEqualTo(ERROR_MSG));
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
         }
@@ -366,7 +374,8 @@ class PersonaControllerTest {
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(UsuarioNotFoundException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
-                            .isEqualTo(ERROR_MSG));
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
         }
@@ -441,7 +450,8 @@ class PersonaControllerTest {
                     .andExpect(jsonPath("descripcion").value(descripcion))
                     .andExpect(jsonPath("imagen").value(imagen))
                     .andExpect(jsonPath("ocupacion").value(ocupacion))
-                    .andExpect(jsonPath("email").value(email));
+                    .andExpect(jsonPath("email").value(email))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
@@ -489,7 +499,8 @@ class PersonaControllerTest {
                             put(API_PERSONA_BASE_URL + "/update/{personId}", personId)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(personToUpdate)))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isForbidden())
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
@@ -546,7 +557,8 @@ class PersonaControllerTest {
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(PersonaNotFoundException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
-                            .isEqualTo(ERROR_MSG));
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
@@ -581,7 +593,8 @@ class PersonaControllerTest {
         try {
             mockMvc.perform(
                             delete(API_PERSONA_BASE_URL + "/delete/{id}", personIdToDelete))
-                    .andExpect(status().isNoContent());
+                    .andExpect(status().isNoContent())
+                    .andDo(print());
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
         }
@@ -601,7 +614,8 @@ class PersonaControllerTest {
         try {
             mockMvc.perform(
                             delete(API_PERSONA_BASE_URL + "/delete/{id}", personIdToDelete))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isForbidden())
+                    .andDo(print());
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
         }
@@ -630,7 +644,8 @@ class PersonaControllerTest {
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(PersonaNotFoundException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
-                            .isEqualTo(ERROR_MSG));
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
@@ -671,7 +686,8 @@ class PersonaControllerTest {
                     .andExpect(jsonPath("$[0].apellidos").value(persona1.getApellidos()))
                     .andExpect(jsonPath("$[1].id").value(persona2.getId()))
                     .andExpect(jsonPath("$[1].nombres").value(persona2.getNombres()))
-                    .andExpect(jsonPath("$[1].apellidos").value(persona2.getApellidos()));
+                    .andExpect(jsonPath("$[1].apellidos").value(persona2.getApellidos()))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw any exception");
@@ -713,7 +729,8 @@ class PersonaControllerTest {
                     .andExpect(jsonPath("$[0].apellidos").value(persona1.getApellidos()))
                     .andExpect(jsonPath("$[1].id").value(persona2.getId()))
                     .andExpect(jsonPath("$[1].nombres").value(persona2.getNombres()))
-                    .andExpect(jsonPath("$[1].apellidos").value(persona2.getApellidos()));
+                    .andExpect(jsonPath("$[1].apellidos").value(persona2.getApellidos()))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw any exception");
@@ -753,7 +770,8 @@ class PersonaControllerTest {
                     .andExpect(jsonPath("nombres").value(nombres))
                     .andExpect(jsonPath("apellidos").value(apellidos))
                     .andExpect(jsonPath("fechaNacimiento").value(fechaNacimiento.format(DateTimeFormatter.ISO_DATE)))
-                    .andExpect(jsonPath("nacionalidad").value(nacionalidad.toString()));
+                    .andExpect(jsonPath("nacionalidad").value(nacionalidad.toString()))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw any exception");
@@ -777,7 +795,8 @@ class PersonaControllerTest {
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(UsuarioNotFoundException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
-                            .isEqualTo(ERROR_MSG));
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw any exception");
@@ -804,12 +823,15 @@ class PersonaControllerTest {
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(PersonaNotFoundException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
-                            .isEqualTo(ERROR_MSG));
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw any exception");
         }
     }
+
+    // ------------------- Trabajos -----------------------------
 
     @DisplayName("Should return 201 and add the trabajo when the persona exists")
     @WithMockUser()
@@ -897,7 +919,8 @@ class PersonaControllerTest {
                     .andExpect(jsonPath("$.experienciasLaborales[:1].cargo").value(cargo))
                     .andExpect(jsonPath("$.experienciasLaborales[:1].lugar").value(lugar))
                     .andExpect(jsonPath("$.experienciasLaborales[:1].desde").value(desde.toString()))
-                    .andExpect(jsonPath("$.experienciasLaborales[:1].hasta").value(hasta.toString()));
+                    .andExpect(jsonPath("$.experienciasLaborales[:1].hasta").value(hasta.toString()))
+                    .andDo(print());
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
         }
@@ -936,7 +959,8 @@ class PersonaControllerTest {
                             post(API_PERSONA_BASE_URL + "/add/{id}/trabajos/", personIdToAddTrabajo)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(trabajoToAddDto)))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isForbidden())
+                    .andDo(print());
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
         }
@@ -974,7 +998,8 @@ class PersonaControllerTest {
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(PersonaNotFoundException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
-                            .isEqualTo(ERROR_MSG));
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
@@ -1073,7 +1098,8 @@ class PersonaControllerTest {
                     .andExpect(jsonPath("$.experienciasLaborales[:1].cargo").value(cargo))
                     .andExpect(jsonPath("$.experienciasLaborales[:1].lugar").value(lugar))
                     .andExpect(jsonPath("$.experienciasLaborales[:1].desde").value(desde.toString()))
-                    .andExpect(jsonPath("$.experienciasLaborales[:1].hasta").value(hasta.toString()));
+                    .andExpect(jsonPath("$.experienciasLaborales[:1].hasta").value(hasta.toString()))
+                    .andDo(print());
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
         }
@@ -1116,7 +1142,8 @@ class PersonaControllerTest {
                             put(API_PERSONA_BASE_URL + "/update/{id}/trabajos/{idTrabajo}", personIdToUpdate, trabajoIdToUpdate)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(trabajoDto)))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isForbidden())
+                    .andDo(print());
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
         }
@@ -1154,7 +1181,8 @@ class PersonaControllerTest {
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(PersonaNotFoundException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
-                            .isEqualTo(ERROR_MSG));
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
@@ -1191,7 +1219,121 @@ class PersonaControllerTest {
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(TrabajoNotFoundException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
-                            .isEqualTo(ERROR_MSG));
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    @DisplayName("Should return a 204 status code when current authorized user deleted a trabajo")
+    @WithMockUser(username = "username@test.com")
+    @Test
+    void deleteTrabajo_WhenTrabajoIsDeleted_ShouldReturn204() {
+        //given
+        final Long personaId = 8L;
+        final Long trabajoId = 2L;
+
+        ArgumentCaptor<Long> idPersonaArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long> idTrabajoArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+
+        Mockito.doNothing()
+                .when(personaSvc)
+                .removeTrabajo(idPersonaArgumentCaptor.capture(), idTrabajoArgumentCaptor.capture());
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                        delete(API_PERSONA_BASE_URL + "/remove/{id}/trabajos/{idTrabajo}", personaId, trabajoId))
+                    .andExpect(status().isNoContent())
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        final Long idPersonaCapturedValue = idPersonaArgumentCaptor.getValue();
+        Assertions.assertThat(idPersonaCapturedValue).isEqualTo(personaId);
+        final Long idTrabajoCapturedValue = idTrabajoArgumentCaptor.getValue();
+        Assertions.assertThat(idTrabajoCapturedValue).isEqualTo(trabajoId);
+
+        Mockito.verify(personaSvc, Mockito.times(1)).removeTrabajo(personaId, trabajoId);
+    }
+
+    @DisplayName("Should return a 403 status code when user is unauthorized and shouldn't delete trabajo")
+    @Test
+    void deleteTrabajo_WhenUnauthorized_ShouldNotDeleteTrabajoReturn403() {
+        //given
+        final Long personaId = 8L;
+        final Long trabajoId = 2L;
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                        delete(API_PERSONA_BASE_URL + "/remove/{id}/trabajos/{idTrabajo}", personaId, trabajoId))
+                    .andExpect(status().isForbidden())
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        Mockito.verify(personaSvc, Mockito.never()).removeTrabajo(Mockito.anyLong(), Mockito.anyLong());
+    }
+
+    @DisplayName("Should return 404 when persona id is invalid and shouldn't delete trabajo")
+    @WithMockUser()
+    @Test
+    void deleteTrabajo_WhenNonExistentPersonaId_ShouldNotDeleteReturn404() {
+        //given
+        final Long nonExistentPersonaId = 3L;
+        final Long trabajoIdToDelete = 2L;
+        final String ERROR_MSG = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+
+        BDDMockito.willThrow(new PersonaNotFoundException(nonExistentPersonaId))
+                .given(personaSvc).removeTrabajo(Mockito.anyLong(), Mockito.anyLong());
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            delete(API_PERSONA_BASE_URL + "/remove/{id}/trabajos/{idTrabajo}", nonExistentPersonaId, trabajoIdToDelete))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(PersonaNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    @DisplayName("Should return 404 when trabajo id is invalid and shouldn't delete trabajo")
+    @WithMockUser()
+    @Test
+    void deleteTrabajo_WhenNonExistentTrabajoId_ShouldNotDeleteReturn404() {
+        //given
+        final Long personaId = 3L;
+        final Long nonExistentTrabajoId = 2L;
+        final String ERROR_MSG = String.format("Trabajo id %d no encontrado.", nonExistentTrabajoId);
+
+        BDDMockito.willThrow(new TrabajoNotFoundException(nonExistentTrabajoId))
+                .given(personaSvc).removeTrabajo(Mockito.anyLong(), Mockito.anyLong());
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            delete(API_PERSONA_BASE_URL + "/remove/{id}/trabajos/{idTrabajo}", personaId, nonExistentTrabajoId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(TrabajoNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
 
         } catch (Exception e) {
             Assertions.fail("Should not throw an exception");
