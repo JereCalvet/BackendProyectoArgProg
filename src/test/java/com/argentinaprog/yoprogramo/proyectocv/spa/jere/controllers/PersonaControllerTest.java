@@ -4,6 +4,7 @@ import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.*;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.*;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.EducacionDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.PersonaDto;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.ProyectoDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.TrabajoDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.security.JwtConfig;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.security.PasswordConfig;
@@ -1809,7 +1810,7 @@ class PersonaControllerTest {
                     .andDo(print());
 
         } catch (Exception e) {
-           Assertions.fail("Should not throw an exception");
+            Assertions.fail("Should not throw an exception");
         }
     }
 
@@ -1833,6 +1834,481 @@ class PersonaControllerTest {
                     .andExpect(status().isNotFound())
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(EducacionNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    // ------------------- Proyecto -----------------------------
+
+    @DisplayName("Should return 201 and add the proyecto when the persona exists")
+    @WithMockUser()
+    @Test
+    void addProyecto_WhenPersonaExists_ShouldReturn201UpdatedPersona() {
+        //given
+        final var proyectoId = 2L;
+        final var nombre = "Argentina Programa";
+        final var descripcionProyecto = "Un curso de programación";
+        final var proyectoDto = new ProyectoDto(
+                nombre,
+                descripcionProyecto
+        );
+        final var proyectoAdded = Proyecto.builder()
+                .id(proyectoId)
+                .nombre(nombre)
+                .descripcion(descripcionProyecto)
+                .build();
+        List<Proyecto> proyectos = Stream.of(proyectoAdded)
+                .collect(Collectors.toList());
+
+        final var personId = 1L;
+        final var nombres = "Jere";
+        final var apellidos = "Calvet";
+        final var fechaNacimiento = LocalDate.now();
+        final var nacionalidad = Nacionalidades.ARGENTINA;
+        final var email = "test@test.com";
+        final var descripcion = "descripción";
+        final var imagen = "test.jpg";
+        final var ocupacion = "Ocupación";
+        var personaWithProyectoAdded = Persona.builder()
+                .id(personId)
+                .nombres(nombres)
+                .apellidos(apellidos)
+                .fechaNacimiento(fechaNacimiento)
+                .nacionalidad(nacionalidad)
+                .email(email)
+                .descripcion(descripcion)
+                .imagen(imagen)
+                .ocupacion(ocupacion)
+                .experienciasLaborales(List.of())
+                .habilidades(List.of())
+                .estudios(List.of())
+                .proyectos(proyectos)
+                .build();
+
+        ArgumentCaptor<ProyectoDto> proyectoRequestDtoArgumentCaptor = ArgumentCaptor.forClass(ProyectoDto.class);
+        ArgumentCaptor<Long> idPersonaRequestArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+
+        given(personaSvc.addProyecto(
+                idPersonaRequestArgumentCaptor.capture(),
+                proyectoRequestDtoArgumentCaptor.capture()))
+                .willReturn(personaWithProyectoAdded);
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            post(API_PERSONA_BASE_URL + "/add/{id}/proyectos/", personId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(proyectoDto)))
+                    .andExpect(status().isCreated())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("id").value(personId))
+                    .andExpect(jsonPath("nombres").value(nombres))
+                    .andExpect(jsonPath("apellidos").value(apellidos))
+                    .andExpect(jsonPath("fechaNacimiento").value(fechaNacimiento.toString()))
+                    .andExpect(jsonPath("nacionalidad").value(nacionalidad.toString()))
+                    .andExpect(jsonPath("email").value(email))
+                    .andExpect(jsonPath("descripcion").value(descripcion))
+                    .andExpect(jsonPath("ocupacion").value(ocupacion))
+                    .andExpect(jsonPath("imagen").value(imagen))
+                    .andExpect(jsonPath("ocupacion").value(ocupacion))
+                    .andExpect(jsonPath("proyectos", hasSize(1)))
+                    .andExpect(jsonPath("$.proyectos[:1].id").value((int) proyectoId))
+                    .andExpect(jsonPath("$.proyectos[:1].nombre").value(nombre))
+                    .andExpect(jsonPath("$.proyectos[:1].descripcion").value(descripcionProyecto))
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        final Long idPersonaCapturedRequestValue = idPersonaRequestArgumentCaptor.getValue();
+        Assertions.assertThat(idPersonaCapturedRequestValue).isEqualTo(personId);
+
+        final ProyectoDto proyectoDtoCapturedRequestValue = proyectoRequestDtoArgumentCaptor.getValue();
+        Assertions.assertThat(proyectoDtoCapturedRequestValue.getNombre()).isEqualTo(nombre);
+        Assertions.assertThat(proyectoDtoCapturedRequestValue.getDescripcion()).isEqualTo(descripcionProyecto);
+
+        Mockito.verify(personaSvc, times(1)).addProyecto(Mockito.anyLong(), Mockito.any(ProyectoDto.class));
+        Mockito.verifyNoMoreInteractions(personaSvc);
+    }
+
+    @DisplayName("Should return a 403 status code when user is unauthorized and shouldn't add proyecto")
+    @Test
+    void addProyecto_WhenUnauthorized_ShouldNotAddEstudioReturn403() {
+        //given
+        final Long personIdToAddProyecto = 1L;
+        final var proyectoToAddDto = new ProyectoDto(
+                "Argentina Programa",
+                "Un curso de programación"
+        );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            post(API_PERSONA_BASE_URL + "/add/{id}/proyectos/", personIdToAddProyecto)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(proyectoToAddDto)))
+                    .andExpect(status().isForbidden())
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        Mockito.verify(personaSvc, Mockito.never()).addProyecto(Mockito.any(), Mockito.any());
+    }
+
+    @DisplayName("Should return 404 when persona id is invalid and shouldn't add proyecto")
+    @WithMockUser()
+    @Test
+    void addProyecto_WhenPersonaDoesNotExist_ShouldNotAddProyectoReturn404() {
+        //given
+        final Long personIdToAddProyecto = 1L;
+        final String ERROR_MSG = String.format("Persona id %d no encontrada.", personIdToAddProyecto);
+
+        final var proyectoToAddDto = new ProyectoDto(
+                "Argentina Programa",
+                "Un curso de programación"
+        );
+
+        given(personaSvc.addProyecto(Mockito.anyLong(), Mockito.any(ProyectoDto.class)))
+                .willThrow(new PersonaNotFoundException(personIdToAddProyecto));
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            post(API_PERSONA_BASE_URL + "/add/{id}/proyectos/", personIdToAddProyecto)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(proyectoToAddDto)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(PersonaNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    @DisplayName("Should return 200 and update the proyecto when the persona exists and proyecto exist")
+    @WithMockUser
+    @Test
+    void updateProyecto_WhenProyectoIsUpdated_ShouldReturn200UpdatedPersona() {
+        //given
+        final var proyectoId = 2L;
+        final var nombre = "Argentina Programa";
+        final var descripcionProyecto = "Un curso de programación";
+        final var proyectoDto = new ProyectoDto(
+                nombre,
+                descripcionProyecto
+        );
+        final var proyectoUpdated = Proyecto.builder()
+                .id(proyectoId)
+                .nombre(nombre)
+                .descripcion(descripcionProyecto)
+                .build();
+
+        final long personId = 1L;
+        final String nombres = "Jere";
+        final String apellidos = "Calvet";
+        final LocalDate fechaNacimiento = LocalDate.now();
+        final Nacionalidades nacionalidad = Nacionalidades.ARGENTINA;
+        final String email = "test@test.com";
+        final String descripcion = "descripción";
+        final String imagen = "test.jpg";
+        final String ocupacion = "Ocupación";
+        var personaWithUpdatedProyecto = Persona.builder()
+                .id(personId)
+                .nombres(nombres)
+                .apellidos(apellidos)
+                .fechaNacimiento(fechaNacimiento)
+                .nacionalidad(nacionalidad)
+                .email(email)
+                .descripcion(descripcion)
+                .imagen(imagen)
+                .ocupacion(ocupacion)
+                .habilidades(List.of())
+                .experienciasLaborales(List.of())
+                .estudios(List.of())
+                .proyectos(
+                        Stream.of(proyectoUpdated)
+                                .collect(Collectors.toList()))
+                .build();
+
+        ArgumentCaptor<Long> idPersonaArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long> idProyectoArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<ProyectoDto> proyectoDtoArgumentCaptor = ArgumentCaptor.forClass(ProyectoDto.class);
+
+        BDDMockito.given(
+                personaSvc.updateProyecto(
+                        idPersonaArgumentCaptor.capture(),
+                        idProyectoArgumentCaptor.capture(),
+                        proyectoDtoArgumentCaptor.capture())
+        ).willReturn(
+                personaWithUpdatedProyecto
+        );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            put(API_PERSONA_BASE_URL + "/update/{id}/proyectos/{idProyecto}", personId, proyectoId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(proyectoDto)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("id").value(personId))
+                    .andExpect(jsonPath("nombres").value(nombres))
+                    .andExpect(jsonPath("apellidos").value(apellidos))
+                    .andExpect(jsonPath("fechaNacimiento").value(fechaNacimiento.format(DateTimeFormatter.ISO_DATE)))
+                    .andExpect(jsonPath("nacionalidad").value(nacionalidad.toString()))
+                    .andExpect(jsonPath("descripcion").value(descripcion))
+                    .andExpect(jsonPath("imagen").value(imagen))
+                    .andExpect(jsonPath("ocupacion").value(ocupacion))
+                    .andExpect(jsonPath("email").value(email))
+                    .andExpect(jsonPath("proyectos", hasSize(1)))
+                    .andExpect(jsonPath("$.proyectos[:1].id").value((int) proyectoId))
+                    .andExpect(jsonPath("$.proyectos[:1].nombre").value(nombre))
+                    .andExpect(jsonPath("$.proyectos[:1].descripcion").value(descripcionProyecto))
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        final Long idPersonaCapturedRequestValue = idPersonaArgumentCaptor.getValue();
+        Assertions.assertThat(idPersonaCapturedRequestValue).isEqualTo(personId);
+
+        final Long idProyectoCapturedRequestValue = idProyectoArgumentCaptor.getValue();
+        Assertions.assertThat(idProyectoCapturedRequestValue).isEqualTo(proyectoId);
+
+        final ProyectoDto dtoCapturedRequestValue = proyectoDtoArgumentCaptor.getValue();
+        Assertions.assertThat(dtoCapturedRequestValue.getNombre()).isEqualTo(nombre);
+        Assertions.assertThat(dtoCapturedRequestValue.getDescripcion()).isEqualTo(descripcionProyecto);
+
+        Mockito.verify(personaSvc, times(1)).updateProyecto(Mockito.anyLong(), Mockito.anyLong(), Mockito.any(ProyectoDto.class));
+        Mockito.verifyNoMoreInteractions(personaSvc);
+    }
+
+    @DisplayName("Should return a 403 status code when user is unauthorized and shouldn't update proyecto")
+    @Test
+    void updateProyecto_WhenUnauthorized_ShouldNotUpdateReturn403() {
+        //given
+        final Long personIdToUpdate = 1L;
+        final Long proyectoIdToUpdate = 2L;
+        final var proyectoDto = new ProyectoDto(
+                "Argentina Programa",
+                "Un curso de programación"
+        );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            put(API_PERSONA_BASE_URL + "/update/{id}/proyectos/{idProyecto}", personIdToUpdate, proyectoIdToUpdate)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(proyectoDto)))
+                    .andExpect(status().isForbidden())
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        Mockito.verify(personaSvc, Mockito.never()).updateProyecto(Mockito.any(), Mockito.any(), Mockito.any());
+    }
+
+    @DisplayName("Should return 404 when persona id is invalid and shouldn't update proyecto")
+    @WithMockUser()
+    @Test
+    void updateProyecto_WhenNonExistentPersonaId_ShouldNotUpdateReturn404() {
+        //given
+        final Long nonExistentPersonaId = 3L;
+        final Long proyectoIdToUpdate = 2L;
+        final var proyectoDto = new ProyectoDto(
+                "Argentina Programa",
+                "Un curso de programación"
+        );
+        final String ERROR_MSG = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+
+        willThrow(new PersonaNotFoundException(nonExistentPersonaId))
+                .given(personaSvc).updateProyecto(
+                        Mockito.anyLong(),
+                        Mockito.anyLong(),
+                        Mockito.any(ProyectoDto.class)
+                );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            put(API_PERSONA_BASE_URL + "/update/{id}/proyectos/{idProyecto}", nonExistentPersonaId, proyectoIdToUpdate)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(proyectoDto)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(PersonaNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    @DisplayName("Should return 404 when proyecto id is invalid and shouldn't update proyecto")
+    @WithMockUser()
+    @Test
+    void updateProyecto_WhenNonExistentProyectoId_ShouldNotUpdateReturn404() {
+        //given
+        final Long personaId = 3L;
+        final Long nonExistentProyectoId = 2L;
+        final var proyectoDto = new ProyectoDto(
+                "Argentina Programa",
+                "Un curso de programación"
+        );
+        final String ERROR_MSG = String.format("Proyecto id %d no encontrado.", nonExistentProyectoId);
+
+        willThrow(new ProyectoNotFoundException(nonExistentProyectoId))
+                .given(personaSvc).updateProyecto(
+                        Mockito.anyLong(),
+                        Mockito.anyLong(),
+                        Mockito.any(ProyectoDto.class)
+                );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            put(API_PERSONA_BASE_URL + "/update/{id}/proyectos/{idProyecto}", personaId, nonExistentProyectoId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(proyectoDto)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(ProyectoNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    @DisplayName("Should return a 204 status code when current authorized user deleted a proyecto")
+    @WithMockUser(username = "username@test.com")
+    @Test
+    void deleteProyecto_WhenProyectoIsDeleted_ShouldReturn204() {
+        //given
+        final Long personaId = 8L;
+        final Long proyectoId = 2L;
+
+        ArgumentCaptor<Long> idPersonaArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long> idProyectoArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+
+        Mockito.doNothing()
+                .when(personaSvc)
+                .removeProyecto(
+                        idPersonaArgumentCaptor.capture(),
+                        idProyectoArgumentCaptor.capture()
+                );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            delete(API_PERSONA_BASE_URL + "/remove/{id}/proyectos/{idProyecto}", personaId, proyectoId))
+                    .andExpect(status().isNoContent())
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        final Long idPersonaCapturedValue = idPersonaArgumentCaptor.getValue();
+        Assertions.assertThat(idPersonaCapturedValue).isEqualTo(personaId);
+        final Long idProyectoCapturedValue = idProyectoArgumentCaptor.getValue();
+        Assertions.assertThat(idProyectoCapturedValue).isEqualTo(proyectoId);
+
+        Mockito.verify(personaSvc, Mockito.times(1)).removeProyecto(personaId, proyectoId);
+    }
+
+    @DisplayName("Should return a 403 status code when user is unauthorized and shouldn't delete proyecto")
+    @Test
+    void deleteProyecto_WhenUnauthorized_ShouldNotDeleteProyectoReturn403() {
+        //given
+        final Long personaId = 8L;
+        final Long proyectoId = 2L;
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            delete(API_PERSONA_BASE_URL + "/remove/{id}/proyectos/{idProyecto}", personaId, proyectoId))
+                    .andExpect(status().isForbidden())
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        Mockito.verify(personaSvc, Mockito.never()).removeProyecto(Mockito.anyLong(), Mockito.anyLong());
+    }
+
+    @DisplayName("Should return 404 when persona id is invalid and shouldn't delete proyecto")
+    @WithMockUser()
+    @Test
+    void deleteProyecto_WhenNonExistentPersonaId_ShouldNotDeleteReturn404() {
+        //given
+        final Long nonExistentPersonaId = 3L;
+        final Long proyectoIdToDelete = 2L;
+        final String ERROR_MSG = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+
+        willThrow(new PersonaNotFoundException(nonExistentPersonaId))
+                .given(personaSvc).removeProyecto(Mockito.anyLong(), Mockito.anyLong());
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            delete(API_PERSONA_BASE_URL + "/remove/{id}/proyectos/{idProyecto}", nonExistentPersonaId, proyectoIdToDelete))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(PersonaNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    @DisplayName("Should return 404 when proyecto id is invalid and shouldn't delete proyecto")
+    @WithMockUser()
+    @Test
+    void deleteProyecto_WhenNonExistentProyectoId_ShouldNotDeleteReturn404() {
+        //given
+        final Long personaId = 3L;
+        final Long nonExistentProyectoId = 2L;
+        final String ERROR_MSG = String.format("Proyecto id %d no encontrado.", nonExistentProyectoId);
+
+        willThrow(new ProyectoNotFoundException(nonExistentProyectoId))
+                .given(personaSvc).removeProyecto(Mockito.anyLong(), Mockito.anyLong());
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            delete(API_PERSONA_BASE_URL + "/remove/{id}/proyectos/{idProyecto}", personaId, nonExistentProyectoId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(ProyectoNotFoundException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
                             .isEqualTo(ERROR_MSG))
                     .andDo(print());
