@@ -2,10 +2,7 @@ package com.argentinaprog.yoprogramo.proyectocv.spa.jere.controllers;
 
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.exceptions.*;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.*;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.EducacionDto;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.PersonaDto;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.ProyectoDto;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.TrabajoDto;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.*;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.security.JwtConfig;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.security.PasswordConfig;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.services.PersonaService;
@@ -2309,6 +2306,496 @@ class PersonaControllerTest {
                     .andExpect(status().isNotFound())
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException())
                             .isInstanceOf(ProyectoNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    // ------------------- Habilidad -----------------------------
+
+    @DisplayName("Should return 201 and add the habilidad when the persona exists")
+    @WithMockUser()
+    @Test
+    void addHabilidad_WhenPersonaExists_ShouldReturn201UpdatedPersona() {
+        //given
+        final var habilidadId = 2L;
+        final var nombre = "Conducir";
+        final var descripcionHabilidad = "Carnet de conducir BH1 de autos, camionetas y motos";
+        final var nivel = 15;
+        final var habilidadDto = new HabilidadDto(
+                nombre,
+                nivel,
+                descripcionHabilidad
+        );
+        final var habilidadAdded = Habilidad.builder()
+                .id(habilidadId)
+                .nombre(nombre)
+                .nivel(nivel)
+                .descripcion(descripcionHabilidad)
+                .build();
+        List<Habilidad> habilidades = Stream.of(habilidadAdded)
+                .collect(Collectors.toList());
+
+        final var personId = 1L;
+        final var nombres = "Jere";
+        final var apellidos = "Calvet";
+        final var fechaNacimiento = LocalDate.now();
+        final var nacionalidad = Nacionalidades.ARGENTINA;
+        final var email = "test@test.com";
+        final var descripcion = "descripción";
+        final var imagen = "test.jpg";
+        final var ocupacion = "Ocupación";
+        var personaWithHabilidadAdded = Persona.builder()
+                .id(personId)
+                .nombres(nombres)
+                .apellidos(apellidos)
+                .fechaNacimiento(fechaNacimiento)
+                .nacionalidad(nacionalidad)
+                .email(email)
+                .descripcion(descripcion)
+                .imagen(imagen)
+                .ocupacion(ocupacion)
+                .experienciasLaborales(List.of())
+                .habilidades(habilidades)
+                .estudios(List.of())
+                .proyectos(List.of())
+                .build();
+
+        ArgumentCaptor<HabilidadDto> habilidadRequestDtoArgumentCaptor = ArgumentCaptor.forClass(HabilidadDto.class);
+        ArgumentCaptor<Long> idPersonaRequestArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+
+        given(personaSvc.addHabilidad(
+                idPersonaRequestArgumentCaptor.capture(),
+                habilidadRequestDtoArgumentCaptor.capture()))
+                .willReturn(personaWithHabilidadAdded);
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            post(API_PERSONA_BASE_URL + "/add/{id}/habilidades/", personId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(habilidadDto)))
+                    .andExpect(status().isCreated())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("id").value(personId))
+                    .andExpect(jsonPath("nombres").value(nombres))
+                    .andExpect(jsonPath("apellidos").value(apellidos))
+                    .andExpect(jsonPath("fechaNacimiento").value(fechaNacimiento.toString()))
+                    .andExpect(jsonPath("nacionalidad").value(nacionalidad.toString()))
+                    .andExpect(jsonPath("email").value(email))
+                    .andExpect(jsonPath("descripcion").value(descripcion))
+                    .andExpect(jsonPath("ocupacion").value(ocupacion))
+                    .andExpect(jsonPath("imagen").value(imagen))
+                    .andExpect(jsonPath("ocupacion").value(ocupacion))
+                    .andExpect(jsonPath("habilidades", hasSize(1)))
+                    .andExpect(jsonPath("$.habilidades[:1].id").value((int) habilidadId))
+                    .andExpect(jsonPath("$.habilidades[:1].nombre").value(nombre))
+                    .andExpect(jsonPath("$.habilidades[:1].nivel").value(nivel))
+                    .andExpect(jsonPath("$.habilidades[:1].descripcion").value(descripcionHabilidad))
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        final Long idPersonaCapturedRequestValue = idPersonaRequestArgumentCaptor.getValue();
+        Assertions.assertThat(idPersonaCapturedRequestValue).isEqualTo(personId);
+
+        final HabilidadDto habilidadDtoCapturedRequestValue = habilidadRequestDtoArgumentCaptor.getValue();
+        Assertions.assertThat(habilidadDtoCapturedRequestValue.getNombre()).isEqualTo(nombre);
+        Assertions.assertThat(habilidadDtoCapturedRequestValue.getNivel()).isEqualTo(nivel);
+        Assertions.assertThat(habilidadDtoCapturedRequestValue.getDescripcion()).isEqualTo(descripcionHabilidad);
+
+        Mockito.verify(personaSvc, times(1)).addHabilidad(Mockito.anyLong(), Mockito.any(HabilidadDto.class));
+        Mockito.verifyNoMoreInteractions(personaSvc);
+    }
+
+    @DisplayName("Should return a 403 status code when user is unauthorized and shouldn't add habilidad")
+    @Test
+    void addHabilidad_WhenUnauthorized_ShouldNotAddHabilidadReturn403() {
+        //given
+        final Long personIdToAddHabilidad = 1L;
+        final var habilidadToAddDto = new HabilidadDto(
+                "Conducir",
+                15,
+                "Carnet de conducir BH1 de autos, camionetas y motos"
+        );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            post(API_PERSONA_BASE_URL + "/add/{id}/habilidades/", personIdToAddHabilidad)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(habilidadToAddDto)))
+                    .andExpect(status().isForbidden())
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        Mockito.verify(personaSvc, Mockito.never()).addHabilidad(Mockito.any(), Mockito.any());
+    }
+
+    @DisplayName("Should return 404 when persona id is invalid and shouldn't add habilidad")
+    @WithMockUser()
+    @Test
+    void addHabilidad_WhenPersonaDoesNotExist_ShouldNotAddHabilidadReturn404() {
+        //given
+        final Long personIdToAddHabilidad = 1L;
+        final String ERROR_MSG = String.format("Persona id %d no encontrada.", personIdToAddHabilidad);
+
+        final var habilidadToAddDto = new HabilidadDto(
+                "Conducir",
+                15,
+                "Carnet de conducir BH1 de autos, camionetas y motos"
+        );
+
+        given(personaSvc.addHabilidad(Mockito.anyLong(), Mockito.any(HabilidadDto.class)))
+                .willThrow(new PersonaNotFoundException(personIdToAddHabilidad));
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            post(API_PERSONA_BASE_URL + "/add/{id}/habilidades/", personIdToAddHabilidad)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(habilidadToAddDto)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(PersonaNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    @DisplayName("Should return 200 and update the habilidad when persona and habilidad exist")
+    @WithMockUser
+    @Test
+    void updateHabilidad_WhenHabilidadIsUpdated_ShouldReturn200UpdatedPersona() {
+        //given
+        final var habilidadId = 2L;
+        final var nombre = "Conducir";
+        final var descripcionHabilidad = "Carnet de conducir BH1 de autos, camionetas y motos";
+        final var nivel = 15;
+        final var habilidadDto = new HabilidadDto(
+                nombre,
+                nivel,
+                descripcionHabilidad
+        );
+        final var habilidadUpdated = Habilidad.builder()
+                .id(habilidadId)
+                .nombre(nombre)
+                .nivel(nivel)
+                .descripcion(descripcionHabilidad)
+                .build();
+
+        final long personId = 1L;
+        final String nombres = "Jere";
+        final String apellidos = "Calvet";
+        final LocalDate fechaNacimiento = LocalDate.now();
+        final Nacionalidades nacionalidad = Nacionalidades.ARGENTINA;
+        final String email = "test@test.com";
+        final String descripcion = "descripción";
+        final String imagen = "test.jpg";
+        final String ocupacion = "Ocupación";
+        var personaWithUpdatedHabilidad = Persona.builder()
+                .id(personId)
+                .nombres(nombres)
+                .apellidos(apellidos)
+                .fechaNacimiento(fechaNacimiento)
+                .nacionalidad(nacionalidad)
+                .email(email)
+                .descripcion(descripcion)
+                .imagen(imagen)
+                .ocupacion(ocupacion)
+                .habilidades(
+                        Stream.of(habilidadUpdated)
+                                .collect(Collectors.toList()))
+                .experienciasLaborales(List.of())
+                .estudios(List.of())
+                .proyectos(List.of())
+                .build();
+
+        ArgumentCaptor<Long> idPersonaArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long> idHabilidadArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<HabilidadDto> habilidadDtoArgumentCaptor = ArgumentCaptor.forClass(HabilidadDto.class);
+
+        BDDMockito.given(
+                personaSvc.updateHabilidad(
+                        idPersonaArgumentCaptor.capture(),
+                        idHabilidadArgumentCaptor.capture(),
+                        habilidadDtoArgumentCaptor.capture())
+        ).willReturn(
+                personaWithUpdatedHabilidad
+        );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            put(API_PERSONA_BASE_URL + "/update/{id}/habilidades/{idHabilidad}", personId, habilidadId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(habilidadDto)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("id").value(personId))
+                    .andExpect(jsonPath("nombres").value(nombres))
+                    .andExpect(jsonPath("apellidos").value(apellidos))
+                    .andExpect(jsonPath("fechaNacimiento").value(fechaNacimiento.format(DateTimeFormatter.ISO_DATE)))
+                    .andExpect(jsonPath("nacionalidad").value(nacionalidad.toString()))
+                    .andExpect(jsonPath("descripcion").value(descripcion))
+                    .andExpect(jsonPath("imagen").value(imagen))
+                    .andExpect(jsonPath("ocupacion").value(ocupacion))
+                    .andExpect(jsonPath("email").value(email))
+                    .andExpect(jsonPath("habilidades", hasSize(1)))
+                    .andExpect(jsonPath("$.habilidades[:1].id").value((int) habilidadId))
+                    .andExpect(jsonPath("$.habilidades[:1].nombre").value(nombre))
+                    .andExpect(jsonPath("$.habilidades[:1].nivel").value(nivel))
+                    .andExpect(jsonPath("$.habilidades[:1].descripcion").value(descripcionHabilidad))
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        final Long idPersonaCapturedRequestValue = idPersonaArgumentCaptor.getValue();
+        Assertions.assertThat(idPersonaCapturedRequestValue).isEqualTo(personId);
+
+        final Long idHabilidadCapturedRequestValue = idHabilidadArgumentCaptor.getValue();
+        Assertions.assertThat(idHabilidadCapturedRequestValue).isEqualTo(habilidadId);
+
+        final HabilidadDto dtoCapturedRequestValue = habilidadDtoArgumentCaptor.getValue();
+        Assertions.assertThat(dtoCapturedRequestValue.getNombre()).isEqualTo(nombre);
+        Assertions.assertThat(dtoCapturedRequestValue.getNivel()).isEqualTo(nivel);
+        Assertions.assertThat(dtoCapturedRequestValue.getDescripcion()).isEqualTo(descripcionHabilidad);
+
+        Mockito.verify(personaSvc, times(1)).updateHabilidad(Mockito.anyLong(), Mockito.anyLong(), Mockito.any(HabilidadDto.class));
+        Mockito.verifyNoMoreInteractions(personaSvc);
+    }
+
+    @DisplayName("Should return a 403 status code when user is unauthorized and shouldn't update habilidad")
+    @Test
+    void updateHabilidad_WhenUnauthorized_ShouldNotUpdateReturn403() {
+        //given
+        final Long personIdToUpdate = 1L;
+        final Long habilidadIdToUpdate = 2L;
+        final var habilidadDto = new HabilidadDto(
+                "Conducir",
+                15,
+                "Carnet de conducir BH1 de autos, camionetas y motos"
+        );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            put(API_PERSONA_BASE_URL + "/update/{id}/habilidades/{idHabilidad}", personIdToUpdate, habilidadIdToUpdate)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(habilidadDto)))
+                    .andExpect(status().isForbidden())
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        Mockito.verify(personaSvc, Mockito.never()).updateHabilidad(Mockito.any(), Mockito.any(), Mockito.any());
+    }
+
+    @DisplayName("Should return 404 when persona id is invalid and shouldn't update habilidad")
+    @WithMockUser()
+    @Test
+    void updateHabilidad_WhenNonExistentPersonaId_ShouldNotUpdateReturn404() {
+        //given
+        final Long nonExistentPersonaId = 3L;
+        final Long habilidadIdToUpdate = 2L;
+        final var habilidadDto = new HabilidadDto(
+                "Conducir",
+                15,
+                "Carnet de conducir BH1 de autos, camionetas y motos"
+        );
+        final String ERROR_MSG = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+
+        willThrow(new PersonaNotFoundException(nonExistentPersonaId))
+                .given(personaSvc).updateHabilidad(
+                        Mockito.anyLong(),
+                        Mockito.anyLong(),
+                        Mockito.any(HabilidadDto.class)
+                );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            put(API_PERSONA_BASE_URL + "/update/{id}/habilidades/{idHabilidad}", nonExistentPersonaId, habilidadIdToUpdate)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(habilidadDto)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(PersonaNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    @DisplayName("Should return 404 when proyecto id is invalid and shouldn't update habilidad")
+    @WithMockUser()
+    @Test
+    void updateHabilidad_WhenNonExistentHabilidadId_ShouldNotUpdateReturn404() {
+        //given
+        final Long personaId = 3L;
+        final Long nonExistentHabilidadId = 2L;
+        final var habilidadDto = new HabilidadDto(
+                "Conducir",
+                15,
+                "Carnet de conducir BH1 de autos, camionetas y motos"
+        );
+        final String ERROR_MSG = String.format("Habilidad id %d no encontrado.", nonExistentHabilidadId);
+
+        willThrow(new HabilidadNotFoundException(nonExistentHabilidadId))
+                .given(personaSvc).updateHabilidad(
+                        Mockito.anyLong(),
+                        Mockito.anyLong(),
+                        Mockito.any(HabilidadDto.class)
+                );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            put(API_PERSONA_BASE_URL + "/update/{id}/habilidades/{idHabilidad}", personaId, nonExistentHabilidadId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(habilidadDto)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(HabilidadNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    @DisplayName("Should return a 204 status code when current authorized user deleted an habilidad")
+    @WithMockUser(username = "username@test.com")
+    @Test
+    void deleteHabilidad_WhenHabilidadIsDeleted_ShouldReturn204() {
+        //given
+        final Long personaId = 8L;
+        final Long habilidadId = 2L;
+
+        ArgumentCaptor<Long> idPersonaArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long> idHabilidadArgumentCaptor = ArgumentCaptor.forClass(Long.class);
+
+        Mockito.doNothing()
+                .when(personaSvc)
+                .removeHabilidad(
+                        idPersonaArgumentCaptor.capture(),
+                        idHabilidadArgumentCaptor.capture()
+                );
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            delete(API_PERSONA_BASE_URL + "/remove/{id}/habilidades/{idHabilidad}", personaId, habilidadId))
+                    .andExpect(status().isNoContent())
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        final Long idPersonaCapturedValue = idPersonaArgumentCaptor.getValue();
+        Assertions.assertThat(idPersonaCapturedValue).isEqualTo(personaId);
+        final Long idHabilidadCapturedValue = idHabilidadArgumentCaptor.getValue();
+        Assertions.assertThat(idHabilidadCapturedValue).isEqualTo(habilidadId);
+
+        Mockito.verify(personaSvc, Mockito.times(1)).removeHabilidad(personaId, habilidadId);
+    }
+
+    @DisplayName("Should return a 403 status code when user is unauthorized and shouldn't delete habilidad")
+    @Test
+    void deleteHabilidad_WhenUnauthorized_ShouldNotDeleteHabilidadReturn403() {
+        //given
+        final Long personaId = 8L;
+        final Long habilidadId = 2L;
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            delete(API_PERSONA_BASE_URL + "/remove/{id}/habilidades/{idHabilidad}", personaId, habilidadId))
+                    .andExpect(status().isForbidden())
+                    .andDo(print());
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+
+        Mockito.verify(personaSvc, Mockito.never()).removeHabilidad(Mockito.anyLong(), Mockito.anyLong());
+    }
+
+    @DisplayName("Should return 404 when persona id is invalid and shouldn't delete habilidad")
+    @WithMockUser()
+    @Test
+    void deleteHabilidad_WhenNonExistentPersonaId_ShouldNotDeleteReturn404() {
+        //given
+        final Long nonExistentPersonaId = 3L;
+        final Long habilidadIdToDelete = 2L;
+        final String ERROR_MSG = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+
+        willThrow(new PersonaNotFoundException(nonExistentPersonaId))
+                .given(personaSvc).removeHabilidad(Mockito.anyLong(), Mockito.anyLong());
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            delete(API_PERSONA_BASE_URL + "/remove/{id}/habilidades/{idHabilidad}", nonExistentPersonaId, habilidadIdToDelete))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(PersonaNotFoundException.class))
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
+                            .isEqualTo(ERROR_MSG))
+                    .andDo(print());
+
+        } catch (Exception e) {
+            Assertions.fail("Should not throw an exception");
+        }
+    }
+
+    @DisplayName("Should return 404 when habilidad id is invalid and shouldn't delete habilidad")
+    @WithMockUser()
+    @Test
+    void deleteHabilidad_WhenNonExistentHabilidadId_ShouldNotDeleteReturn404() {
+        //given
+        final Long personaId = 3L;
+        final Long nonExistentHabilidadId = 2L;
+        final String ERROR_MSG = String.format("Habilidad id %d no encontrado.", nonExistentHabilidadId);
+
+        willThrow(new HabilidadNotFoundException(nonExistentHabilidadId))
+                .given(personaSvc).removeHabilidad(Mockito.anyLong(), Mockito.anyLong());
+
+        //when
+        //then
+        try {
+            mockMvc.perform(
+                            delete(API_PERSONA_BASE_URL + "/remove/{id}/habilidades/{idHabilidad}", personaId, nonExistentHabilidadId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(result -> Assertions.assertThat(result.getResolvedException())
+                            .isInstanceOf(HabilidadNotFoundException.class))
                     .andExpect(result -> Assertions.assertThat(result.getResolvedException().getMessage())
                             .isEqualTo(ERROR_MSG))
                     .andDo(print());
