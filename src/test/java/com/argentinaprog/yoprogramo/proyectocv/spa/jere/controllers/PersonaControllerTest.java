@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(value = PersonaController.class)
-@Import(value = {PersonaController.class, PasswordConfig.class, JwtConfig.class})
+@Import(value = {PasswordConfig.class, JwtConfig.class})
 class PersonaControllerTest {
 
     @Autowired
