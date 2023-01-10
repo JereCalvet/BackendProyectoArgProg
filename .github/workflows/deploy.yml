@@ -1,3 +1,7 @@
+# Heroku deploy deprecated
+# No more free trier
+# Switching to render
+
 name: Deploy
 
 on:
