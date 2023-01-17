@@ -1,7 +1,10 @@
 package com.argentinaprog.yoprogramo.proyectocv.spa.jere;
 
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.*;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.PersonaDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.repositories.*;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.security.JwtConfig;
+import com.auth0.jwt.JWT;
 import com.github.javafaker.Faker;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
@@ -19,12 +22,13 @@ import org.springframework.http.HttpStatus;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
@@ -32,7 +36,7 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 @SpringBootTest(webEnvironment = RANDOM_PORT)
 public class IntegrationTest extends AbstractContainerBaseTest {
 
-    private Faker faker = new Faker();
+    private final Faker faker = new Faker();
 
     @Autowired
     private PersonaRepository personaRepository;
@@ -52,6 +56,9 @@ public class IntegrationTest extends AbstractContainerBaseTest {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    @Autowired
+    private JwtConfig jwtConfig;
+
     @LocalServerPort
     int randomServerPort;
 
@@ -62,6 +69,9 @@ public class IntegrationTest extends AbstractContainerBaseTest {
         log.warn("Starting data deletion...");
         personaRepository.deleteAll();
         usuarioRepository.deleteAll();
+        educacionRepository.deleteAll();
+        habilidadRepository.deleteAll();
+        proyectoRepository.deleteAll();
         log.warn("Finished data deletion...");
     }
 
@@ -76,7 +86,7 @@ public class IntegrationTest extends AbstractContainerBaseTest {
             LocalDate fechaNacimiento = faker.date().birthday().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
 
             LocalDate trabajoDesde = addRandomAmountOfYearsBetween(fechaNacimiento, 12, 20); //facha nacimiento + random(min max  -> años estudiando)
-            LocalDate trabajoHasta = addRandomAmountOfYearsBetween(trabajoDesde, 1, 20); //trabajo desde + random(min max  -> años trabajando)
+            LocalDate trabajoHasta = addRandomAmountOfYearsBetween(trabajoDesde, 1, 30); //trabajo desde + random(min max  -> años trabajando)
             Trabajo trabajo = Trabajo.builder()
                     .empresa(faker.company().name())
                     .cargo(faker.job().position())
@@ -194,6 +204,227 @@ public class IntegrationTest extends AbstractContainerBaseTest {
         //when
         //then
         personaRepository.findAll().forEach(hitPersonaByIdEndpointAndCheckValuesConsumer);
+    }
+
+    @Test
+    void getPersonById_WhenPersonaNotFound_ShouldReturnError() {
+        //given
+        final long nonExistentPersonaId = Long.MAX_VALUE;
+        final String errorMsg = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+        final String requestPath = API_URL + "/persona/find/" + nonExistentPersonaId;
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .when()
+                .get(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void addPersona_ShouldAddNewPersona() {
+        //given
+        final String nombres = "Jeremias";
+        final String apellidos = "Calvet";
+        final String email = "jere_calvet@gmail.com";
+        final LocalDate fechaNacimiento = LocalDate.of(2000, 8, 27);
+        final Nacionalidades nacionalidad = Nacionalidades.ARGENTINA;
+        final String descripcion = "acerca de test";
+        final String imagen = "assets/imagen.jpg";
+        final String ocupacion = "tester";
+
+        PersonaDto addPersonaRequestDto = new PersonaDto(
+                nombres,
+                apellidos,
+                fechaNacimiento,
+                nacionalidad,
+                email,
+                descripcion,
+                imagen,
+                ocupacion,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        Usuario user = Usuario.builder()
+                .username(email)
+                .build();
+        usuarioRepository.save(user);
+        String accessToken = JWT.create()
+                .withSubject(email)
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .contentType(ContentType.JSON)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .body(addPersonaRequestDto)
+                .when()
+                .post(API_URL + "/persona/add")
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.CREATED.value())
+                .contentType(ContentType.JSON)
+                .body("id", isA(Integer.class))
+                .body("nombres", is(nombres))
+                .body("apellidos", is(apellidos))
+                .body("fechaNacimiento", is(fechaNacimiento.toString()))
+                .body("nacionalidad", is(nacionalidad.toString()))
+                .body("email", is(email))
+                .body("descripcion", is(descripcion))
+                .body("imagen", is(imagen))
+                .body("estudios", emptyCollectionOf(Educacion.class))
+                .body("habilidades", emptyCollectionOf(Habilidad.class))
+                .body("proyectos", emptyCollectionOf(Proyecto.class))
+                .body("experienciasLaborales", emptyCollectionOf(Trabajo.class))
+                .body("size()", is(14));
+    }
+
+    @Test
+    void _addPersona_WhenUnauthenticated_ShouldBeForbiddenToAddNewPersona() {
+        //given
+        final String nombres = "Jeremias";
+        final String apellidos = "Calvet";
+        final String email = "jere_calvet@gmail.com";
+        final LocalDate fechaNacimiento = LocalDate.of(2000, 8, 27);
+        final Nacionalidades nacionalidad = Nacionalidades.ARGENTINA;
+        final String descripcion = "acerca de test";
+        final String imagen = "assets/imagen.jpg";
+        final String ocupacion = "tester";
+
+        PersonaDto addPersonaRequestDto = new PersonaDto(
+                nombres,
+                apellidos,
+                fechaNacimiento,
+                nacionalidad,
+                email,
+                descripcion,
+                imagen,
+                ocupacion,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .contentType(ContentType.JSON)
+                .body(addPersonaRequestDto)
+                .when()
+                .post(API_URL + "/persona/add")
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    void addPersona_WhenCurrentUserAlreadyHasAPersona_ShouldReturnError() {
+        //given
+        final String nombres = "Jeremias";
+        final String apellidos = "Calvet";
+        final String email = "jere_calvet@gmail.com";
+        final LocalDate fechaNacimiento = LocalDate.of(2000, 8, 27);
+        final Nacionalidades nacionalidad = Nacionalidades.ARGENTINA;
+        final String descripcion = "acerca de test";
+        final String imagen = "assets/imagen.jpg";
+        final String ocupacion = "tester";
+
+        var personaAlreadyInDb = Persona.builder()
+                .nombres(nombres)
+                .apellidos(apellidos)
+                .fechaNacimiento(fechaNacimiento)
+                .nacionalidad(nacionalidad)
+                .email(email)
+                .ocupacion(ocupacion)
+                .descripcion(descripcion)
+                .imagen(imagen)
+                .build();
+        var usuario = Usuario.builder()
+                .username(email)
+                .enabled(true)
+                .locked(false)
+                .password(faker.internet().password())
+                .build();
+        personaAlreadyInDb.setUsuario(usuario);
+        usuario.setPersona(personaAlreadyInDb);
+        personaRepository.saveAndFlush(personaAlreadyInDb);
+
+        PersonaDto addPersonaRequestDto = new PersonaDto(
+                nombres,
+                apellidos,
+                fechaNacimiento,
+                nacionalidad,
+                email,
+                descripcion,
+                imagen,
+                ocupacion,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        String accessToken = JWT.create()
+                .withSubject(email)
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final String errorMsg = String.format("El usuario %s ya tiene una persona creada.", email);
+        final String requestPath = API_URL + "/persona/add";
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .contentType(ContentType.JSON)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .body(addPersonaRequestDto)
+                .when()
+                .post(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.CONFLICT.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.CONFLICT.value()))
+                .body("error", is(HttpStatus.CONFLICT.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+
     }
 
     @Test
