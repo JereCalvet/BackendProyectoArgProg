@@ -34,7 +34,7 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 @Slf4j
 @SpringBootTest(webEnvironment = RANDOM_PORT)
-public class IntegrationTest extends AbstractContainerBaseTest {
+public class IntegrationTest { //extends AbstractContainerBaseTest {
 
     private final Faker faker = new Faker();
 
@@ -677,4 +677,133 @@ public class IntegrationTest extends AbstractContainerBaseTest {
                 .contentType(ContentType.JSON)
                 .body("size()", Matchers.is(10));
     }
+
+    @Test
+    void getCurrentPersona_WhenLoggedUserHasGotPersona_ShouldReturnHisPersona() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Educacion estudioPersonaInDb = educacionRepository.findAll().stream().filter(e -> e.getPersona().getId().equals(personaInDb.getId())).findFirst().get();
+        final Habilidad habilidadPersonaInDb = habilidadRepository.findAll().stream().filter(h -> h.getPersona().getId().equals(personaInDb.getId())).findFirst().get();
+        final Proyecto proyectoPersonaInDb = proyectoRepository.findAll().stream().filter(pr -> pr.getPersona().getId().equals(personaInDb.getId())).findFirst().get();
+        final Trabajo trabajoPersonaInDb = trabajoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaInDb.getId())).findFirst().get();
+        final Usuario userOfCurrentPersonaInDb = personaInDb.getUsuario();
+        String accessToken = JWT.create()
+                .withSubject(userOfCurrentPersonaInDb.getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .when()
+                .get(API_URL + "/persona/current")
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.OK.value())
+                .contentType(ContentType.JSON)
+                .body("id", is(personaInDb.getId().intValue()))
+                .body("nombres", is(personaInDb.getNombres()))
+                .body("apellidos", is(personaInDb.getApellidos()))
+                .body("fechaNacimiento", is(personaInDb.getFechaNacimiento().toString()))
+                .body("nacionalidad", is(personaInDb.getNacionalidad().toString()))
+                .body("email", is(personaInDb.getEmail()))
+                .body("descripcion", is(personaInDb.getDescripcion()))
+                .body("imagen", is(personaInDb.getImagen()))
+                .body("usuario.username", is(personaInDb.getUsuario().getUsername()))
+                .body("estudios.id", is(List.of(estudioPersonaInDb.getId().intValue())))
+                .body("estudios.institucion", is(Collections.singletonList(estudioPersonaInDb.getInstitucion())))
+                .body("estudios.titulo", is(Collections.singletonList(estudioPersonaInDb.getTitulo())))
+                .body("estudios.lugar", is(Collections.singletonList(estudioPersonaInDb.getLugar())))
+                .body("estudios.estado", is(Collections.singletonList(estudioPersonaInDb.getEstado().toString())))
+                .body("habilidades.id", is(List.of(habilidadPersonaInDb.getId().intValue())))
+                .body("habilidades.nombre", is(Collections.singletonList(habilidadPersonaInDb.getNombre())))
+                .body("habilidades.nivel", is(Collections.singletonList(habilidadPersonaInDb.getNivel())))
+                .body("habilidades.descripcion", is(Collections.singletonList(habilidadPersonaInDb.getDescripcion())))
+                .body("proyectos.id", is(List.of(proyectoPersonaInDb.getId().intValue())))
+                .body("proyectos.nombre", is(Collections.singletonList(proyectoPersonaInDb.getNombre())))
+                .body("proyectos.descripcion", is(Collections.singletonList(proyectoPersonaInDb.getDescripcion())))
+                .body("experienciasLaborales.id", is(List.of(trabajoPersonaInDb.getId().intValue())))
+                .body("experienciasLaborales.empresa", is(List.of(trabajoPersonaInDb.getEmpresa())))
+                .body("experienciasLaborales.cargo", is(List.of(trabajoPersonaInDb.getCargo())))
+                .body("experienciasLaborales.lugar", is(List.of(trabajoPersonaInDb.getLugar())))
+                .body("experienciasLaborales.desde", is(List.of(trabajoPersonaInDb.getDesde().toString())))
+                .body("experienciasLaborales.hasta", is(List.of(trabajoPersonaInDb.getHasta().toString())))
+                .body("size()", is(14));
+    }
+
+    @Test
+    void getCurrentPersona_WhenLoggedUserHasNotGotPersona_ShouldReturnHisPersona() {
+        //given
+        final String username = "testing@test.com";
+        Usuario newUserWithoutPerson = Usuario.builder()
+                .username(username)
+                .enabled(true)
+                .locked(false)
+                .password(faker.internet().password())
+                .build();
+        usuarioRepository.saveAndFlush(newUserWithoutPerson);
+
+        String accessToken = JWT.create()
+                .withSubject(username)
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final String errorMsg = String.format("El usuario %s no tiene una persona creada.", username);
+        final String requestPath = API_URL + "/persona/current";
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .when()
+                .get(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void getCurrentPersona_WhenUnauthenticated_ShouldReturnNoPersonaMessage() {
+        //given
+        final String msg = "Usuario no encontrado.";
+        final String requestPath = API_URL + "/persona/current";
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .when()
+                .get(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.ACCEPTED.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.ACCEPTED.value()))
+                .body("error", is(HttpStatus.ACCEPTED.getReasonPhrase()))
+                .body("message", is(msg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
 }
