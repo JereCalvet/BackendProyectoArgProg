@@ -66,13 +66,13 @@ public class IntegrationTest extends AbstractContainerBaseTest {
 
     @AfterEach
     void tearDown() {
-        log.warn("Starting data deletion...");
+        log.info("Starting data deletion...");
         personaRepository.deleteAll();
         usuarioRepository.deleteAll();
         educacionRepository.deleteAll();
         habilidadRepository.deleteAll();
         proyectoRepository.deleteAll();
-        log.warn("Finished data deletion...");
+        log.info("Finished data deletion...");
     }
 
     @BeforeEach
@@ -81,7 +81,7 @@ public class IntegrationTest extends AbstractContainerBaseTest {
     }
 
     private void setUpFakeData() {
-        log.warn("Starting data initialization...");
+        log.info("Starting data initialization...");
         for (int i = 0; i < 10; i++) {
             LocalDate fechaNacimiento = faker.date().birthday().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
 
@@ -139,7 +139,7 @@ public class IntegrationTest extends AbstractContainerBaseTest {
             personaRepository.save(persona);
         }
         personaRepository.flush();
-        log.warn("Finished data initialization...");
+        log.info("Finished data initialization...");
     }
 
     private LocalDate addRandomAmountOfYearsBetween(LocalDate dateToModify, int min, int max) {
