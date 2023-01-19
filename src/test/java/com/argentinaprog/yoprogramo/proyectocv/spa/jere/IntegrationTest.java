@@ -1,9 +1,7 @@
 package com.argentinaprog.yoprogramo.proyectocv.spa.jere;
 
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.*;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.EducacionDto;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.PersonaDto;
-import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.TrabajoDto;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.*;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.repositories.*;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.security.JwtConfig;
 import com.auth0.jwt.JWT;
@@ -893,17 +891,12 @@ public class IntegrationTest extends AbstractContainerBaseTest {
         final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
         final Long personaIdToAddTrabajo = personaInDb.getId();
 
-        final LocalDate desdeInTrabajoToAdd = LocalDate.now();
-        final LocalDate hastaInTrabajoToAdd = addRandomAmountOfYearsBetween(desdeInTrabajoToAdd, 1, 30);
-        final String empresaInTrabajoToAdd = faker.company().name();
-        final String cargoInTrabajoToAdd = faker.job().position();
-        final String lugarInTrabajoToAdd = faker.address().city();
         final TrabajoDto addTrabajoRequestDto = new TrabajoDto(
-                empresaInTrabajoToAdd,
-                cargoInTrabajoToAdd,
-                lugarInTrabajoToAdd,
-                desdeInTrabajoToAdd,
-                hastaInTrabajoToAdd
+                faker.company().name(),
+                faker.job().position(),
+                faker.address().city(),
+                LocalDate.now(),
+                addRandomAmountOfYearsBetween(LocalDate.now(), 1, 30)
         );
 
         //when
@@ -940,17 +933,12 @@ public class IntegrationTest extends AbstractContainerBaseTest {
                 .withClaim("roles", List.of("ROLE_USER"))
                 .sign(jwtConfig.algorithmWithSecret());
 
-        final LocalDate desdeInTrabajoToAdd = LocalDate.now();
-        final LocalDate hastaInTrabajoToAdd = addRandomAmountOfYearsBetween(desdeInTrabajoToAdd, 1, 30);
-        final String empresaInTrabajoToAdd = faker.company().name();
-        final String cargoInTrabajoToAdd = faker.job().position();
-        final String lugarInTrabajoToAdd = faker.address().city();
         final TrabajoDto addTrabajoRequestDto = new TrabajoDto(
-                empresaInTrabajoToAdd,
-                cargoInTrabajoToAdd,
-                lugarInTrabajoToAdd,
-                desdeInTrabajoToAdd,
-                hastaInTrabajoToAdd
+                faker.company().name(),
+                faker.job().position(),
+                faker.address().city(),
+                LocalDate.now(),
+                addRandomAmountOfYearsBetween(LocalDate.now(), 1, 30)
         );
 
         final long nonExistentPersonaId = Long.MAX_VALUE;
@@ -1065,17 +1053,12 @@ public class IntegrationTest extends AbstractContainerBaseTest {
         final Trabajo trabajoPersonaInDb = trabajoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToUpdateTrabajo)).findFirst().get();
         final Long trabajoIdToUpdate = trabajoPersonaInDb.getId();
 
-        final LocalDate desdeInTrabajoToUpdate = LocalDate.now();
-        final LocalDate hastaInTrabajoToUpdate = addRandomAmountOfYearsBetween(desdeInTrabajoToUpdate, 1, 30);
-        final String empresaInTrabajoToUpdate = faker.company().name();
-        final String cargoInTrabajoToUpdate = faker.job().position();
-        final String lugarInTrabajoToUpdate = faker.address().city();
         TrabajoDto updateTrabajoRequestDto = new TrabajoDto(
-                empresaInTrabajoToUpdate,
-                cargoInTrabajoToUpdate,
-                lugarInTrabajoToUpdate,
-                desdeInTrabajoToUpdate,
-                hastaInTrabajoToUpdate
+                faker.company().name(),
+                faker.job().position(),
+                faker.address().city(),
+                LocalDate.now(),
+                addRandomAmountOfYearsBetween(LocalDate.now(), 1, 30)
         );
 
         //when
@@ -1778,6 +1761,947 @@ public class IntegrationTest extends AbstractContainerBaseTest {
         final long nonExistentEstudioIdToDelete = Long.MAX_VALUE;
         final String errorMsg = String.format("Estudio id %d no encontrado.", nonExistentEstudioIdToDelete);
         final String requestPath = String.format("%s/persona/remove/%s/estudios/%s", API_URL, personaIdToDeleteEstudio, nonExistentEstudioIdToDelete);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .when()
+                .delete(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    // ------------------- Proyecto -----------------------------
+
+    @Test
+    void addProyecto_ShouldAddNewProyecto() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToAddProyecto = personaInDb.getId();
+
+        final String nombreInProyectoToAdd = faker.funnyName().name();
+        final String descripcionInProyectoToAdd = String.join(" ", faker.lorem().words(10));
+        final ProyectoDto addProyectoRequestDto = new ProyectoDto(
+                nombreInProyectoToAdd,
+                descripcionInProyectoToAdd
+        );
+
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Educacion estudioPersonaInDb = educacionRepository.findAll().stream().filter(e -> e.getPersona().getId().equals(personaIdToAddProyecto)).findFirst().get();
+        final Habilidad habilidadPersonaInDb = habilidadRepository.findAll().stream().filter(h -> h.getPersona().getId().equals(personaIdToAddProyecto)).findFirst().get();
+        final Proyecto proyectoPersonaInDb = proyectoRepository.findAll().stream().filter(pr -> pr.getPersona().getId().equals(personaIdToAddProyecto)).findFirst().get();
+        final Trabajo trabajoPersonaInDb = trabajoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToAddProyecto)).findFirst().get();
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .contentType(ContentType.JSON)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .body(addProyectoRequestDto)
+                .when()
+                .post(String.format("%s/persona/add/%s/proyectos/", API_URL, personaIdToAddProyecto))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.CREATED.value())
+                .contentType(ContentType.JSON)
+                .body("id", is(personaInDb.getId().intValue()))
+                .body("nombres", is(personaInDb.getNombres()))
+                .body("apellidos", is(personaInDb.getApellidos()))
+                .body("fechaNacimiento", is(personaInDb.getFechaNacimiento().toString()))
+                .body("nacionalidad", is(personaInDb.getNacionalidad().toString()))
+                .body("email", is(personaInDb.getEmail()))
+                .body("descripcion", is(personaInDb.getDescripcion()))
+                .body("imagen", is(personaInDb.getImagen()))
+                .body("usuario.username", is(personaInDb.getUsuario().getUsername()))
+                .body("estudios.id", is(List.of(estudioPersonaInDb.getId().intValue())))
+                .body("estudios.institucion", is(Collections.singletonList(estudioPersonaInDb.getInstitucion())))
+                .body("estudios.titulo", is(Collections.singletonList(estudioPersonaInDb.getTitulo())))
+                .body("estudios.lugar", is(Collections.singletonList(estudioPersonaInDb.getLugar())))
+                .body("estudios.estado", is(Collections.singletonList(estudioPersonaInDb.getEstado().toString())))
+                .body("habilidades.id", is(List.of(habilidadPersonaInDb.getId().intValue())))
+                .body("habilidades.nombre", is(Collections.singletonList(habilidadPersonaInDb.getNombre())))
+                .body("habilidades.nivel", is(Collections.singletonList(habilidadPersonaInDb.getNivel())))
+                .body("habilidades.descripcion", is(Collections.singletonList(habilidadPersonaInDb.getDescripcion())))
+                .body("proyectos.id", hasSize(2))
+                .body("proyectos.nombre", hasItems(proyectoPersonaInDb.getNombre(), nombreInProyectoToAdd))
+                .body("proyectos.descripcion", hasItems(proyectoPersonaInDb.getDescripcion(), descripcionInProyectoToAdd))
+                .body("experienciasLaborales.id", is(List.of(trabajoPersonaInDb.getId().intValue())))
+                .body("experienciasLaborales.empresa", is(List.of(trabajoPersonaInDb.getEmpresa())))
+                .body("experienciasLaborales.cargo", is(List.of(trabajoPersonaInDb.getCargo())))
+                .body("experienciasLaborales.lugar", is(List.of(trabajoPersonaInDb.getLugar())))
+                .body("experienciasLaborales.desde", is(List.of(trabajoPersonaInDb.getDesde().toString())))
+                .body("experienciasLaborales.hasta", is(List.of(trabajoPersonaInDb.getHasta().toString())))
+                .body("size()", is(14));
+    }
+
+    @Test
+    void addProyecto_WhenUnauthenticated_ShouldBeForbiddenToAddProyecto() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToAddProyecto = personaInDb.getId();
+
+        final ProyectoDto addProyectoRequestDto = new ProyectoDto(
+                faker.funnyName().name(),
+                String.join(" ", faker.lorem().words(10))
+        );
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .contentType(ContentType.JSON)
+                .body(addProyectoRequestDto)
+                .when()
+                .post(String.format("%s/persona/add/%s/proyectos/", API_URL, personaIdToAddProyecto))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    void addProyecto_WhenPersonaIdIsNotFound_ShouldReturnError() {
+        //given
+        final String username = faker.internet().emailAddress();
+        Usuario newUserWithoutPerson = Usuario.builder()
+                .username(username)
+                .enabled(true)
+                .locked(false)
+                .password(faker.internet().password())
+                .build();
+        usuarioRepository.saveAndFlush(newUserWithoutPerson);
+
+        final String accessToken = JWT.create()
+                .withSubject(username)
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final ProyectoDto addProyectoRequestDto = new ProyectoDto(
+                faker.funnyName().name(),
+                String.join(" ", faker.lorem().words(10))
+        );
+
+        final long nonExistentPersonaId = Long.MAX_VALUE;
+        final String errorMsg = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+        final String requestPath = String.format("%s/persona/add/%s/proyectos/", API_URL, nonExistentPersonaId);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .contentType(ContentType.JSON)
+                .body(addProyectoRequestDto)
+                .when()
+                .post(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void updateProyecto_ShouldUpdateProyecto() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToUpdateProyecto = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Educacion estudioPersonaInDb = educacionRepository.findAll().stream().filter(e -> e.getPersona().getId().equals(personaIdToUpdateProyecto)).findFirst().get();
+        final Habilidad habilidadPersonaInDb = habilidadRepository.findAll().stream().filter(h -> h.getPersona().getId().equals(personaIdToUpdateProyecto)).findFirst().get();
+        final Proyecto proyectoPersonaInDb = proyectoRepository.findAll().stream().filter(pr -> pr.getPersona().getId().equals(personaIdToUpdateProyecto)).findFirst().get();
+        final Trabajo trabajoPersonaInDb = trabajoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToUpdateProyecto)).findFirst().get();
+        final Long proyectoIdToUpdate = proyectoPersonaInDb.getId();
+
+        final String nombreInProyectoToUpdate = faker.funnyName().name();
+        final String descripcionInProyectoToUpdate = String.join(" ", faker.lorem().words(10));
+        final ProyectoDto updateProyectoRequestDto = new ProyectoDto(
+                nombreInProyectoToUpdate,
+                descripcionInProyectoToUpdate
+        );
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .contentType(ContentType.JSON)
+                .body(updateProyectoRequestDto)
+                .when()
+                .put(String.format("%s/persona/update/%s/proyectos/%s", API_URL, personaIdToUpdateProyecto, proyectoIdToUpdate))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.OK.value())
+                .contentType(ContentType.JSON)
+                .body("id", is(personaIdToUpdateProyecto.intValue()))
+                .body("nombres", is(personaInDb.getNombres()))
+                .body("apellidos", is(personaInDb.getApellidos()))
+                .body("fechaNacimiento", is(personaInDb.getFechaNacimiento().toString()))
+                .body("nacionalidad", is(personaInDb.getNacionalidad().toString()))
+                .body("email", is(personaInDb.getEmail()))
+                .body("descripcion", is(personaInDb.getDescripcion()))
+                .body("imagen", is(personaInDb.getImagen()))
+                .body("usuario.username", is(personaInDb.getUsuario().getUsername()))
+                .body("estudios.id", is(List.of(estudioPersonaInDb.getId().intValue())))
+                .body("estudios.institucion", is(Collections.singletonList(estudioPersonaInDb.getInstitucion())))
+                .body("estudios.titulo", is(Collections.singletonList(estudioPersonaInDb.getTitulo())))
+                .body("estudios.lugar", is(Collections.singletonList(estudioPersonaInDb.getLugar())))
+                .body("estudios.estado", is(Collections.singletonList(estudioPersonaInDb.getEstado().toString())))
+                .body("habilidades.id", is(List.of(habilidadPersonaInDb.getId().intValue())))
+                .body("habilidades.nombre", is(Collections.singletonList(habilidadPersonaInDb.getNombre())))
+                .body("habilidades.nivel", is(Collections.singletonList(habilidadPersonaInDb.getNivel())))
+                .body("habilidades.descripcion", is(Collections.singletonList(habilidadPersonaInDb.getDescripcion())))
+                .body("proyectos.id", is(List.of(proyectoPersonaInDb.getId().intValue())))
+                .body("proyectos.nombre", is(List.of(nombreInProyectoToUpdate)))
+                .body("proyectos.descripcion", is(List.of(descripcionInProyectoToUpdate)))
+                .body("experienciasLaborales.id", is(List.of(trabajoPersonaInDb.getId().intValue())))
+                .body("experienciasLaborales.empresa", is(List.of(trabajoPersonaInDb.getEmpresa())))
+                .body("experienciasLaborales.cargo", is(List.of(trabajoPersonaInDb.getCargo())))
+                .body("experienciasLaborales.lugar", is(List.of(trabajoPersonaInDb.getLugar())))
+                .body("experienciasLaborales.desde", is(List.of(trabajoPersonaInDb.getDesde().toString())))
+                .body("experienciasLaborales.hasta", is(List.of(trabajoPersonaInDb.getHasta().toString())))
+                .body("size()", is(14));
+    }
+
+    @Test
+    void updateProyecto_WhenUnauthenticated_ShouldBeForbiddenToUpdateProyecto() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToUpdateProyecto = personaInDb.getId();
+
+        final Proyecto proyectoPersonaInDb = proyectoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToUpdateProyecto)).findFirst().get();
+        final Long proyectoIdToUpdate = proyectoPersonaInDb.getId();
+
+        final ProyectoDto updateProyectoRequestDto = new ProyectoDto(
+                faker.funnyName().name(),
+                String.join(" ", faker.lorem().words(10))
+        );
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .contentType(ContentType.JSON)
+                .body(updateProyectoRequestDto)
+                .when()
+                .put(String.format("%s/persona/update/%s/proyectos/%s", API_URL, personaIdToUpdateProyecto, proyectoIdToUpdate))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    void updateProyecto_WhenPersonaIdIsNotFound_ShouldReturnError() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToUpdateProyecto = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Long existentProyectoIdToUpdate = proyectoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToUpdateProyecto)).findFirst().get().getId();
+        final ProyectoDto updateProyectoRequestDto = new ProyectoDto(
+                faker.funnyName().name(),
+                String.join(" ", faker.lorem().words(10))
+        );
+
+        final long nonExistentPersonaId = Long.MAX_VALUE;
+        final String errorMsg = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+        final String requestPath = String.format("%s/persona/update/%s/proyectos/%s", API_URL, nonExistentPersonaId, existentProyectoIdToUpdate);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .contentType(ContentType.JSON)
+                .body(updateProyectoRequestDto)
+                .when()
+                .put(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void updateProyecto_WhenProyectoIdIsNotFound_ShouldReturnError() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToUpdateProyecto = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final ProyectoDto updateProyectoRequestDto = new ProyectoDto(
+                faker.funnyName().name(),
+                String.join(" ", faker.lorem().words(10))
+        );
+
+        final long nonExistentProyectoIdToUpdate = Long.MAX_VALUE;
+        final String errorMsg = String.format("Proyecto id %d no encontrado.", nonExistentProyectoIdToUpdate);
+        final String requestPath = String.format("%s/persona/update/%s/proyectos/%s", API_URL, personaIdToUpdateProyecto, nonExistentProyectoIdToUpdate);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .contentType(ContentType.JSON)
+                .body(updateProyectoRequestDto)
+                .when()
+                .put(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void removeProyecto_ShouldDeleteProyecto() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToDeleteProyecto = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Proyecto proyectoPersonaInDb = proyectoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToDeleteProyecto)).findFirst().get();
+        final Long proyectoIdToDelete = proyectoPersonaInDb.getId();
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .when()
+                .delete(String.format("%s/persona/remove/%s/proyectos/%s", API_URL, personaIdToDeleteProyecto, proyectoIdToDelete))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NO_CONTENT.value());
+
+        assertThat(proyectoRepository.findAll().stream().anyMatch(t -> t.getPersona().getId().equals(personaIdToDeleteProyecto))).isFalse();
+    }
+
+    @Test
+    void removeProyecto_WhenUnauthenticated_ShouldBeForbiddenToDeleteProyecto() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToDeleteProyecto = personaInDb.getId();
+        final Proyecto proyectoPersonaInDb = proyectoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToDeleteProyecto)).findFirst().get();
+        final Long proyectoIdToDelete = proyectoPersonaInDb.getId();
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .when()
+                .delete(String.format("%s/persona/remove/%s/proyectos/%s", API_URL, personaIdToDeleteProyecto, proyectoIdToDelete))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    void removeProyecto_WhenPersonaIdIsNotFound_ShouldReturnError() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToDeleteProyecto = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Long existentProyectoIdToDelete = proyectoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToDeleteProyecto)).findFirst().get().getId();
+
+        final long nonExistentPersonaId = Long.MAX_VALUE;
+        final String errorMsg = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+        final String requestPath = String.format("%s/persona/remove/%s/proyectos/%s", API_URL, nonExistentPersonaId, existentProyectoIdToDelete);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .when()
+                .delete(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void removeProyecto_WhenProyectoIdIsNotFound_ShouldReturnError() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToDeleteProyecto = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final long nonExistentProyectoIdToDelete = Long.MAX_VALUE;
+        final String errorMsg = String.format("Proyecto id %d no encontrado.", nonExistentProyectoIdToDelete);
+        final String requestPath = String.format("%s/persona/remove/%s/proyectos/%s", API_URL, personaIdToDeleteProyecto, nonExistentProyectoIdToDelete);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .when()
+                .delete(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    // ------------------- Habilidades -----------------------------
+
+    @Test
+    void addHabilidad_ShouldAddNewHabilidad() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToAddHabilidad = personaInDb.getId();
+
+        final String nombreInHabilidadToAdd = faker.job().keySkills();
+        final int nivelInHabilidadToAdd = faker.number().numberBetween(1, 100);
+        final String descripcionInHabilidadToAdd = String.join(" ", faker.lorem().words(10));
+        final HabilidadDto addHabilidadRequestDto = new HabilidadDto(
+                nombreInHabilidadToAdd,
+                nivelInHabilidadToAdd,
+                descripcionInHabilidadToAdd
+        );
+
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Educacion estudioPersonaInDb = educacionRepository.findAll().stream().filter(e -> e.getPersona().getId().equals(personaIdToAddHabilidad)).findFirst().get();
+        final Habilidad habilidadPersonaInDb = habilidadRepository.findAll().stream().filter(h -> h.getPersona().getId().equals(personaIdToAddHabilidad)).findFirst().get();
+        final Proyecto proyectoPersonaInDb = proyectoRepository.findAll().stream().filter(pr -> pr.getPersona().getId().equals(personaIdToAddHabilidad)).findFirst().get();
+        final Trabajo trabajoPersonaInDb = trabajoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToAddHabilidad)).findFirst().get();
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .contentType(ContentType.JSON)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .body(addHabilidadRequestDto)
+                .when()
+                .post(String.format("%s/persona/add/%s/habilidades/", API_URL, personaIdToAddHabilidad))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.CREATED.value())
+                .contentType(ContentType.JSON)
+                .body("id", is(personaInDb.getId().intValue()))
+                .body("nombres", is(personaInDb.getNombres()))
+                .body("apellidos", is(personaInDb.getApellidos()))
+                .body("fechaNacimiento", is(personaInDb.getFechaNacimiento().toString()))
+                .body("nacionalidad", is(personaInDb.getNacionalidad().toString()))
+                .body("email", is(personaInDb.getEmail()))
+                .body("descripcion", is(personaInDb.getDescripcion()))
+                .body("imagen", is(personaInDb.getImagen()))
+                .body("usuario.username", is(personaInDb.getUsuario().getUsername()))
+                .body("estudios.id", is(List.of(estudioPersonaInDb.getId().intValue())))
+                .body("estudios.institucion", is(Collections.singletonList(estudioPersonaInDb.getInstitucion())))
+                .body("estudios.titulo", is(Collections.singletonList(estudioPersonaInDb.getTitulo())))
+                .body("estudios.lugar", is(Collections.singletonList(estudioPersonaInDb.getLugar())))
+                .body("estudios.estado", is(Collections.singletonList(estudioPersonaInDb.getEstado().toString())))
+                .body("habilidades.id", hasSize(2))
+                .body("habilidades.nombre", hasItems(habilidadPersonaInDb.getNombre(), nombreInHabilidadToAdd))
+                .body("habilidades.nivel", hasItems(habilidadPersonaInDb.getNivel(), nivelInHabilidadToAdd))
+                .body("habilidades.descripcion", hasItems(habilidadPersonaInDb.getDescripcion(), descripcionInHabilidadToAdd))
+                .body("proyectos.id", is(List.of(proyectoPersonaInDb.getId().intValue())))
+                .body("proyectos.nombre", is(Collections.singletonList(proyectoPersonaInDb.getNombre())))
+                .body("proyectos.descripcion", is(Collections.singletonList(proyectoPersonaInDb.getDescripcion())))
+                .body("experienciasLaborales.id", is(List.of(trabajoPersonaInDb.getId().intValue())))
+                .body("experienciasLaborales.empresa", is(List.of(trabajoPersonaInDb.getEmpresa())))
+                .body("experienciasLaborales.cargo", is(List.of(trabajoPersonaInDb.getCargo())))
+                .body("experienciasLaborales.lugar", is(List.of(trabajoPersonaInDb.getLugar())))
+                .body("experienciasLaborales.desde", is(List.of(trabajoPersonaInDb.getDesde().toString())))
+                .body("experienciasLaborales.hasta", is(List.of(trabajoPersonaInDb.getHasta().toString())))
+                .body("size()", is(14));
+    }
+
+    @Test
+    void addHabilidad_WhenUnauthenticated_ShouldBeForbiddenToAddHabilidad() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToAddHabilidad = personaInDb.getId();
+
+        final HabilidadDto addHabilidadRequestDto = new HabilidadDto(
+                faker.job().keySkills(),
+                faker.number().numberBetween(1, 100),
+                String.join(" ", faker.lorem().words(10))
+        );
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .contentType(ContentType.JSON)
+                .body(addHabilidadRequestDto)
+                .when()
+                .post(String.format("%s/persona/add/%s/habilidades/", API_URL, personaIdToAddHabilidad))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    void addHabilidad_WhenPersonaIdIsNotFound_ShouldReturnError() {
+        //given
+        final String username = faker.internet().emailAddress();
+        Usuario newUserWithoutPerson = Usuario.builder()
+                .username(username)
+                .enabled(true)
+                .locked(false)
+                .password(faker.internet().password())
+                .build();
+        usuarioRepository.saveAndFlush(newUserWithoutPerson);
+
+        final String accessToken = JWT.create()
+                .withSubject(username)
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final HabilidadDto addHabilidadRequestDto = new HabilidadDto(
+                faker.job().keySkills(),
+                faker.number().numberBetween(1, 100),
+                String.join(" ", faker.lorem().words(10))
+        );
+
+        final long nonExistentPersonaId = Long.MAX_VALUE;
+        final String errorMsg = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+        final String requestPath = String.format("%s/persona/add/%s/habilidades/", API_URL, nonExistentPersonaId);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .contentType(ContentType.JSON)
+                .body(addHabilidadRequestDto)
+                .when()
+                .post(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void updateHabilidad_ShouldUpdateHabilidad() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToUpdateHabilidad = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Educacion estudioPersonaInDb = educacionRepository.findAll().stream().filter(e -> e.getPersona().getId().equals(personaIdToUpdateHabilidad)).findFirst().get();
+        final Habilidad habilidadPersonaInDb = habilidadRepository.findAll().stream().filter(h -> h.getPersona().getId().equals(personaIdToUpdateHabilidad)).findFirst().get();
+        final Proyecto proyectoPersonaInDb = proyectoRepository.findAll().stream().filter(pr -> pr.getPersona().getId().equals(personaIdToUpdateHabilidad)).findFirst().get();
+        final Trabajo trabajoPersonaInDb = trabajoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToUpdateHabilidad)).findFirst().get();
+        final Long habilidadIdToUpdate = habilidadPersonaInDb.getId();
+
+        final String nombreInHabilidadToUpdate = faker.job().keySkills();
+        final int nivelInHabilidadToUpdate = faker.number().numberBetween(1, 100);
+        final String descripcionInHabilidadToUpdate = String.join(" ", faker.lorem().words(10));
+        final HabilidadDto updateHabilidadRequestDto = new HabilidadDto(
+                nombreInHabilidadToUpdate,
+                nivelInHabilidadToUpdate,
+                descripcionInHabilidadToUpdate
+        );
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .contentType(ContentType.JSON)
+                .body(updateHabilidadRequestDto)
+                .when()
+                .put(String.format("%s/persona/update/%s/habilidades/%s", API_URL, personaIdToUpdateHabilidad, habilidadIdToUpdate))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.OK.value())
+                .contentType(ContentType.JSON)
+                .body("id", is(personaIdToUpdateHabilidad.intValue()))
+                .body("nombres", is(personaInDb.getNombres()))
+                .body("apellidos", is(personaInDb.getApellidos()))
+                .body("fechaNacimiento", is(personaInDb.getFechaNacimiento().toString()))
+                .body("nacionalidad", is(personaInDb.getNacionalidad().toString()))
+                .body("email", is(personaInDb.getEmail()))
+                .body("descripcion", is(personaInDb.getDescripcion()))
+                .body("imagen", is(personaInDb.getImagen()))
+                .body("usuario.username", is(personaInDb.getUsuario().getUsername()))
+                .body("estudios.id", is(List.of(estudioPersonaInDb.getId().intValue())))
+                .body("estudios.institucion", is(Collections.singletonList(estudioPersonaInDb.getInstitucion())))
+                .body("estudios.titulo", is(Collections.singletonList(estudioPersonaInDb.getTitulo())))
+                .body("estudios.lugar", is(Collections.singletonList(estudioPersonaInDb.getLugar())))
+                .body("estudios.estado", is(Collections.singletonList(estudioPersonaInDb.getEstado().toString())))
+                .body("habilidades.id", is(List.of(habilidadPersonaInDb.getId().intValue())))
+                .body("habilidades.nombre", is(List.of(nombreInHabilidadToUpdate)))
+                .body("habilidades.nivel", is(List.of(nivelInHabilidadToUpdate)))
+                .body("habilidades.descripcion", is(List.of(descripcionInHabilidadToUpdate)))
+                .body("proyectos.id", is(List.of(proyectoPersonaInDb.getId().intValue())))
+                .body("proyectos.nombre", is(Collections.singletonList(proyectoPersonaInDb.getNombre())))
+                .body("proyectos.descripcion", is(Collections.singletonList(proyectoPersonaInDb.getDescripcion())))
+                .body("experienciasLaborales.id", is(List.of(trabajoPersonaInDb.getId().intValue())))
+                .body("experienciasLaborales.id", is(List.of(trabajoPersonaInDb.getId().intValue())))
+                .body("experienciasLaborales.empresa", is(List.of(trabajoPersonaInDb.getEmpresa())))
+                .body("experienciasLaborales.cargo", is(List.of(trabajoPersonaInDb.getCargo())))
+                .body("experienciasLaborales.lugar", is(List.of(trabajoPersonaInDb.getLugar())))
+                .body("experienciasLaborales.desde", is(List.of(trabajoPersonaInDb.getDesde().toString())))
+                .body("experienciasLaborales.hasta", is(List.of(trabajoPersonaInDb.getHasta().toString())))
+                .body("size()", is(14));
+    }
+
+    @Test
+    void updateHabilidad_WhenUnauthenticated_ShouldBeForbiddenToUpdateHabilidad() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToUpdateHabilidad = personaInDb.getId();
+
+        final Habilidad habilidadPersonaInDb = habilidadRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToUpdateHabilidad)).findFirst().get();
+        final Long habilidadIdToUpdate = habilidadPersonaInDb.getId();
+
+        final HabilidadDto updateHabilidadRequestDto = new HabilidadDto(
+                faker.job().keySkills(),
+                faker.number().numberBetween(1, 100),
+                String.join(" ", faker.lorem().words(10))
+        );
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .contentType(ContentType.JSON)
+                .body(updateHabilidadRequestDto)
+                .when()
+                .put(String.format("%s/persona/update/%s/habilidades/%s", API_URL, personaIdToUpdateHabilidad, habilidadIdToUpdate))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    void updateHabilidad_WhenPersonaIdIsNotFound_ShouldReturnError() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToUpdateHabilidad = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Long existentHabilidadIdToUpdate = habilidadRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToUpdateHabilidad)).findFirst().get().getId();
+
+        final HabilidadDto updateHabilidadRequestDto = new HabilidadDto(
+                faker.job().keySkills(),
+                faker.number().numberBetween(1, 100),
+                String.join(" ", faker.lorem().words(10))
+        );
+
+        final long nonExistentPersonaId = Long.MAX_VALUE;
+        final String errorMsg = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+        final String requestPath = String.format("%s/persona/update/%s/habilidades/%s", API_URL, nonExistentPersonaId, existentHabilidadIdToUpdate);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .contentType(ContentType.JSON)
+                .body(updateHabilidadRequestDto)
+                .when()
+                .put(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void updateHabilidad_WhenHabilidadIdIsNotFound_ShouldReturnError() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToUpdateHabilidad = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final HabilidadDto updateHabilidadRequestDto = new HabilidadDto(
+                faker.job().keySkills(),
+                faker.number().numberBetween(1, 100),
+                String.join(" ", faker.lorem().words(10))
+        );
+
+        final long nonExistentHabilidadIdToUpdate = Long.MAX_VALUE;
+        final String errorMsg = String.format("Habilidad id %d no encontrado.", nonExistentHabilidadIdToUpdate);
+        final String requestPath = String.format("%s/persona/update/%s/habilidades/%s", API_URL, personaIdToUpdateHabilidad, nonExistentHabilidadIdToUpdate);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .contentType(ContentType.JSON)
+                .body(updateHabilidadRequestDto)
+                .when()
+                .put(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void removeHabilidad_ShouldDeleteHabilidad() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToDeleteHabilidad = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Habilidad habilidadPersonaInDb = habilidadRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToDeleteHabilidad)).findFirst().get();
+        final Long habilidadIdToDelete = habilidadPersonaInDb.getId();
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .when()
+                .delete(String.format("%s/persona/remove/%s/habilidades/%s", API_URL, personaIdToDeleteHabilidad, habilidadIdToDelete))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NO_CONTENT.value());
+
+        assertThat(habilidadRepository.findAll().stream().anyMatch(t -> t.getPersona().getId().equals(personaIdToDeleteHabilidad))).isFalse();
+    }
+
+    @Test
+    void removeHabilidad_WhenUnauthenticated_ShouldBeForbiddenToDeleteHabilidad() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToDeleteHabilidad = personaInDb.getId();
+        final Habilidad habilidadPersonaInDb = habilidadRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToDeleteHabilidad)).findFirst().get();
+        final Long habilidadIdToDelete = habilidadPersonaInDb.getId();
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .when()
+                .delete(String.format("%s/persona/remove/%s/habilidades/%s", API_URL, personaIdToDeleteHabilidad, habilidadIdToDelete))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    void removeHabilidad_WhenPersonaIdIsNotFound_ShouldReturnError() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToDeleteHabilidad = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Long existentHabilidadIdToDelete = habilidadRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToDeleteHabilidad)).findFirst().get().getId();
+
+        final long nonExistentPersonaId = Long.MAX_VALUE;
+        final String errorMsg = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+        final String requestPath = String.format("%s/persona/remove/%s/habilidades/%s", API_URL, nonExistentPersonaId, existentHabilidadIdToDelete);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .when()
+                .delete(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void removeHabilidad_WhenHabilidadIdIsNotFound_ShouldReturnError() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToDeleteHabilidad = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final long nonExistentHabilidadIdToDelete = Long.MAX_VALUE;
+        final String errorMsg = String.format("Habilidad id %d no encontrado.", nonExistentHabilidadIdToDelete);
+        final String requestPath = String.format("%s/persona/remove/%s/habilidades/%s", API_URL, personaIdToDeleteHabilidad, nonExistentHabilidadIdToDelete);
 
         //when
         //then
