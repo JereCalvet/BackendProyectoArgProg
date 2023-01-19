@@ -1,6 +1,7 @@
 package com.argentinaprog.yoprogramo.proyectocv.spa.jere;
 
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.*;
+import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.EducacionDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.PersonaDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.model.dto.TrabajoDto;
 import com.argentinaprog.yoprogramo.proyectocv.spa.jere.repositories.*;
@@ -742,7 +743,7 @@ public class IntegrationTest extends AbstractContainerBaseTest {
     @Test
     void getCurrentPersona_WhenLoggedUserHasNotGotPersona_ShouldReturnHisPersona() {
         //given
-        final String username = "testing@test.com";
+        final String username = faker.internet().emailAddress();
         Usuario newUserWithoutPerson = Usuario.builder()
                 .username(username)
                 .enabled(true)
@@ -923,7 +924,7 @@ public class IntegrationTest extends AbstractContainerBaseTest {
     @Test
     void addTrabajo_WhenPersonaIdIsNotFound_ShouldReturnError() {
         //given
-        final String username = "testing@test.com";
+        final String username = faker.internet().emailAddress();
         Usuario newUserWithoutPerson = Usuario.builder()
                 .username(username)
                 .enabled(true)
@@ -1056,7 +1057,7 @@ public class IntegrationTest extends AbstractContainerBaseTest {
     }
 
     @Test
-    void updateTrabajo_WhenUnauthenticated_ShouldBeForbiddenToUpdatePersona() {
+    void updateTrabajo_WhenUnauthenticated_ShouldBeForbiddenToUpdateTrabajo() {
         //given
         final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
         final Long personaIdToUpdateTrabajo = personaInDb.getId();
@@ -1290,9 +1291,9 @@ public class IntegrationTest extends AbstractContainerBaseTest {
                 .withClaim("roles", List.of("ROLE_USER"))
                 .sign(jwtConfig.algorithmWithSecret());
 
-        final long nonExistentTrabajoIdToUpdate = Long.MAX_VALUE;
-        final String errorMsg = String.format("Trabajo id %d no encontrado.", nonExistentTrabajoIdToUpdate);
-        final String requestPath = String.format("%s/persona/remove/%s/trabajos/%s", API_URL, personaIdToDeleteTrabajo, nonExistentTrabajoIdToUpdate);
+        final long nonExistentTrabajoIdToDelete = Long.MAX_VALUE;
+        final String errorMsg = String.format("Trabajo id %d no encontrado.", nonExistentTrabajoIdToDelete);
+        final String requestPath = String.format("%s/persona/remove/%s/trabajos/%s", API_URL, personaIdToDeleteTrabajo, nonExistentTrabajoIdToDelete);
 
         //when
         //then
@@ -1315,4 +1316,487 @@ public class IntegrationTest extends AbstractContainerBaseTest {
                 .body("size()", is(5));
     }
 
+    // ------------------- Educación -----------------------------
+
+    @Test
+    void addEstudio_ShouldAddNewEstudio() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToAddEstudio = personaInDb.getId();
+
+        final String institucionInEstudioToAdd = faker.educator().university();
+        final String tituloInEstudioToAdd = faker.educator().course();
+        final String lugarInEstudioToAdd = faker.address().city();
+        final ProgresoEducacion progresoInEstudioToAdd = ProgresoEducacion.values()[faker.number().numberBetween(0, ProgresoEducacion.values().length)];
+        final EducacionDto addEstudioRequestDto = new EducacionDto(
+                institucionInEstudioToAdd,
+                tituloInEstudioToAdd,
+                lugarInEstudioToAdd,
+                progresoInEstudioToAdd
+        );
+
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Educacion estudioPersonaInDb = educacionRepository.findAll().stream().filter(e -> e.getPersona().getId().equals(personaIdToAddEstudio)).findFirst().get();
+        final Habilidad habilidadPersonaInDb = habilidadRepository.findAll().stream().filter(h -> h.getPersona().getId().equals(personaIdToAddEstudio)).findFirst().get();
+        final Proyecto proyectoPersonaInDb = proyectoRepository.findAll().stream().filter(pr -> pr.getPersona().getId().equals(personaIdToAddEstudio)).findFirst().get();
+        final Trabajo trabajoPersonaInDb = trabajoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToAddEstudio)).findFirst().get();
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .contentType(ContentType.JSON)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .body(addEstudioRequestDto)
+                .when()
+                .post(String.format("%s/persona/add/%s/estudios/", API_URL, personaIdToAddEstudio))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.CREATED.value())
+                .contentType(ContentType.JSON)
+                .body("id", is(personaInDb.getId().intValue()))
+                .body("nombres", is(personaInDb.getNombres()))
+                .body("apellidos", is(personaInDb.getApellidos()))
+                .body("fechaNacimiento", is(personaInDb.getFechaNacimiento().toString()))
+                .body("nacionalidad", is(personaInDb.getNacionalidad().toString()))
+                .body("email", is(personaInDb.getEmail()))
+                .body("descripcion", is(personaInDb.getDescripcion()))
+                .body("imagen", is(personaInDb.getImagen()))
+                .body("usuario.username", is(personaInDb.getUsuario().getUsername()))
+                .body("estudios.id", hasSize(2))
+                .body("estudios.institucion", hasItems(estudioPersonaInDb.getInstitucion(), institucionInEstudioToAdd))
+                .body("estudios.titulo", hasItems(estudioPersonaInDb.getTitulo(), tituloInEstudioToAdd))
+                .body("estudios.lugar", hasItems(estudioPersonaInDb.getLugar(), lugarInEstudioToAdd))
+                .body("estudios.estado", hasItems(estudioPersonaInDb.getEstado().toString(), progresoInEstudioToAdd.toString()))
+                .body("habilidades.id", is(List.of(habilidadPersonaInDb.getId().intValue())))
+                .body("habilidades.nombre", is(Collections.singletonList(habilidadPersonaInDb.getNombre())))
+                .body("habilidades.nivel", is(Collections.singletonList(habilidadPersonaInDb.getNivel())))
+                .body("habilidades.descripcion", is(Collections.singletonList(habilidadPersonaInDb.getDescripcion())))
+                .body("proyectos.id", is(List.of(proyectoPersonaInDb.getId().intValue())))
+                .body("proyectos.nombre", is(Collections.singletonList(proyectoPersonaInDb.getNombre())))
+                .body("proyectos.descripcion", is(Collections.singletonList(proyectoPersonaInDb.getDescripcion())))
+                .body("experienciasLaborales.id", is(List.of(trabajoPersonaInDb.getId().intValue())))
+                .body("experienciasLaborales.empresa", is(List.of(trabajoPersonaInDb.getEmpresa())))
+                .body("experienciasLaborales.cargo", is(List.of(trabajoPersonaInDb.getCargo())))
+                .body("experienciasLaborales.lugar", is(List.of(trabajoPersonaInDb.getLugar())))
+                .body("experienciasLaborales.desde", is(List.of(trabajoPersonaInDb.getDesde().toString())))
+                .body("experienciasLaborales.hasta", is(List.of(trabajoPersonaInDb.getHasta().toString())))
+                .body("size()", is(14));
+    }
+
+    @Test
+    void addEstudio_WhenUnauthenticated_ShouldBeForbiddenToAddEstudio() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToAddEstudio = personaInDb.getId();
+
+        final EducacionDto addEstudioRequestDto = new EducacionDto(
+                faker.educator().university(),
+                faker.educator().course(),
+                faker.address().city(),
+                ProgresoEducacion.values()[faker.number().numberBetween(0, ProgresoEducacion.values().length)]
+        );
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .contentType(ContentType.JSON)
+                .body(addEstudioRequestDto)
+                .when()
+                .post(String.format("%s/persona/add/%s/estudios/", API_URL, personaIdToAddEstudio))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    void addEstudio_WhenPersonaIdIsNotFound_ShouldReturnError() {
+        //given
+        final String username = faker.internet().emailAddress();
+        Usuario newUserWithoutPerson = Usuario.builder()
+                .username(username)
+                .enabled(true)
+                .locked(false)
+                .password(faker.internet().password())
+                .build();
+        usuarioRepository.saveAndFlush(newUserWithoutPerson);
+
+        final String accessToken = JWT.create()
+                .withSubject(username)
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final EducacionDto addEstudioRequestDto = new EducacionDto(
+                faker.educator().university(),
+                faker.educator().course(),
+                faker.address().city(),
+                ProgresoEducacion.values()[faker.number().numberBetween(0, ProgresoEducacion.values().length)]
+        );
+
+        final long nonExistentPersonaId = Long.MAX_VALUE;
+        final String errorMsg = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+        final String requestPath = String.format("%s/persona/add/%s/estudios/", API_URL, nonExistentPersonaId);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .contentType(ContentType.JSON)
+                .body(addEstudioRequestDto)
+                .when()
+                .post(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void updateEstudio_ShouldUpdateEstudio() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToUpdateEstudio = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Educacion estudioPersonaInDb = educacionRepository.findAll().stream().filter(e -> e.getPersona().getId().equals(personaIdToUpdateEstudio)).findFirst().get();
+        final Habilidad habilidadPersonaInDb = habilidadRepository.findAll().stream().filter(h -> h.getPersona().getId().equals(personaIdToUpdateEstudio)).findFirst().get();
+        final Proyecto proyectoPersonaInDb = proyectoRepository.findAll().stream().filter(pr -> pr.getPersona().getId().equals(personaIdToUpdateEstudio)).findFirst().get();
+        final Trabajo trabajoPersonaInDb = trabajoRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToUpdateEstudio)).findFirst().get();
+        final Long estudioIdToUpdate = estudioPersonaInDb.getId();
+
+        final String institucionInEstudioToUpdate = faker.educator().university();
+        final String tituloInEstudioToUpdate = faker.educator().course();
+        final String lugarInEstudioToUpdate = faker.address().city();
+        final ProgresoEducacion progresoInEstudioToUpdate = ProgresoEducacion.values()[faker.number().numberBetween(0, ProgresoEducacion.values().length)];
+        final EducacionDto updateEstudioRequestDto = new EducacionDto(
+                institucionInEstudioToUpdate,
+                tituloInEstudioToUpdate,
+                lugarInEstudioToUpdate,
+                progresoInEstudioToUpdate
+        );
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .contentType(ContentType.JSON)
+                .body(updateEstudioRequestDto)
+                .when()
+                .put(String.format("%s/persona/update/%s/estudios/%s", API_URL, personaIdToUpdateEstudio, estudioIdToUpdate))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.OK.value())
+                .contentType(ContentType.JSON)
+                .body("id", is(personaIdToUpdateEstudio.intValue()))
+                .body("nombres", is(personaInDb.getNombres()))
+                .body("apellidos", is(personaInDb.getApellidos()))
+                .body("fechaNacimiento", is(personaInDb.getFechaNacimiento().toString()))
+                .body("nacionalidad", is(personaInDb.getNacionalidad().toString()))
+                .body("email", is(personaInDb.getEmail()))
+                .body("descripcion", is(personaInDb.getDescripcion()))
+                .body("imagen", is(personaInDb.getImagen()))
+                .body("usuario.username", is(personaInDb.getUsuario().getUsername()))
+                .body("estudios.id", is(List.of(estudioPersonaInDb.getId().intValue())))
+                .body("estudios.institucion", is(Collections.singletonList(institucionInEstudioToUpdate)))
+                .body("estudios.titulo", is(Collections.singletonList(tituloInEstudioToUpdate)))
+                .body("estudios.lugar", is(Collections.singletonList(lugarInEstudioToUpdate)))
+                .body("estudios.estado", is(Collections.singletonList(progresoInEstudioToUpdate.toString())))
+                .body("habilidades.id", is(List.of(habilidadPersonaInDb.getId().intValue())))
+                .body("habilidades.nombre", is(Collections.singletonList(habilidadPersonaInDb.getNombre())))
+                .body("habilidades.nivel", is(Collections.singletonList(habilidadPersonaInDb.getNivel())))
+                .body("habilidades.descripcion", is(Collections.singletonList(habilidadPersonaInDb.getDescripcion())))
+                .body("proyectos.id", is(List.of(proyectoPersonaInDb.getId().intValue())))
+                .body("proyectos.nombre", is(Collections.singletonList(proyectoPersonaInDb.getNombre())))
+                .body("proyectos.descripcion", is(Collections.singletonList(proyectoPersonaInDb.getDescripcion())))
+                .body("experienciasLaborales.id", is(List.of(trabajoPersonaInDb.getId().intValue())))
+                .body("experienciasLaborales.empresa", is(List.of(trabajoPersonaInDb.getEmpresa())))
+                .body("experienciasLaborales.cargo", is(List.of(trabajoPersonaInDb.getCargo())))
+                .body("experienciasLaborales.lugar", is(List.of(trabajoPersonaInDb.getLugar())))
+                .body("experienciasLaborales.desde", is(List.of(trabajoPersonaInDb.getDesde().toString())))
+                .body("experienciasLaborales.hasta", is(List.of(trabajoPersonaInDb.getHasta().toString())))
+                .body("size()", is(14));
+    }
+
+    @Test
+    void updateEstudio_WhenUnauthenticated_ShouldBeForbiddenToUpdateEstudio() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToUpdateEstudio = personaInDb.getId();
+
+        final Educacion estudioPersonaInDb = educacionRepository.findAll().stream().filter(e -> e.getPersona().getId().equals(personaIdToUpdateEstudio)).findFirst().get();
+        final Long estudioIdToUpdate = estudioPersonaInDb.getId();
+
+        final EducacionDto updateEstudioRequestDto = new EducacionDto(
+                faker.educator().university(),
+                faker.educator().course(),
+                faker.address().city(),
+                ProgresoEducacion.values()[faker.number().numberBetween(0, ProgresoEducacion.values().length)]
+        );
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .contentType(ContentType.JSON)
+                .body(updateEstudioRequestDto)
+                .when()
+                .put(String.format("%s/persona/update/%s/estudios/%s", API_URL, personaIdToUpdateEstudio, estudioIdToUpdate))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    void updateEstudio_WhenPersonaIdIsNotFound_ShouldReturnError() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToUpdateEstudio = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Long existentEstudioIdToUpdate = educacionRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToUpdateEstudio)).findFirst().get().getId();
+
+        final EducacionDto updateEstudioRequestDto = new EducacionDto(
+                faker.educator().university(),
+                faker.educator().course(),
+                faker.address().city(),
+                ProgresoEducacion.values()[faker.number().numberBetween(0, ProgresoEducacion.values().length)]
+        );
+
+        final long nonExistentPersonaId = Long.MAX_VALUE;
+        final String errorMsg = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+        final String requestPath = String.format("%s/persona/update/%s/estudios/%s", API_URL, nonExistentPersonaId, existentEstudioIdToUpdate);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .contentType(ContentType.JSON)
+                .body(updateEstudioRequestDto)
+                .when()
+                .put(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void updateEstudio_WhenEstudioIdIsNotFound_ShouldReturnError() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToUpdateEstudio = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final EducacionDto updateEstudioRequestDto = new EducacionDto(
+                faker.educator().university(),
+                faker.educator().course(),
+                faker.address().city(),
+                ProgresoEducacion.values()[faker.number().numberBetween(0, ProgresoEducacion.values().length)]
+        );
+
+        final long nonExistentEstudioIdToUpdate = Long.MAX_VALUE;
+        final String errorMsg = String.format("Estudio id %d no encontrado.", nonExistentEstudioIdToUpdate);
+        final String requestPath = String.format("%s/persona/update/%s/estudios/%s", API_URL, personaIdToUpdateEstudio, nonExistentEstudioIdToUpdate);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .contentType(ContentType.JSON)
+                .body(updateEstudioRequestDto)
+                .when()
+                .put(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void removeEstudio_ShouldDeleteEstudio() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToDeleteEstudio = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Educacion estudioPersonaInDb = educacionRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToDeleteEstudio)).findFirst().get();
+        final Long estudioIdToDelete = estudioPersonaInDb.getId();
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .when()
+                .delete(String.format("%s/persona/remove/%s/estudios/%s", API_URL, personaIdToDeleteEstudio, estudioIdToDelete))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NO_CONTENT.value());
+
+        assertThat(educacionRepository.findAll().stream().anyMatch(t -> t.getPersona().getId().equals(personaIdToDeleteEstudio))).isFalse();
+    }
+
+    @Test
+    void removeEstudio_WhenUnauthenticated_ShouldBeForbiddenToDeleteEstudio() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToDeleteEstudio = personaInDb.getId();
+        final Educacion estudioPersonaInDb = educacionRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToDeleteEstudio)).findFirst().get();
+        final Long estudioIdToDelete = estudioPersonaInDb.getId();
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .when()
+                .delete(String.format("%s/persona/remove/%s/estudios/%s", API_URL, personaIdToDeleteEstudio, estudioIdToDelete))
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    void removeEstudio_WhenPersonaIdIsNotFound_ShouldReturnError() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToDeleteEstudio = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final Long existentEstudioIdToDelete = educacionRepository.findAll().stream().filter(t -> t.getPersona().getId().equals(personaIdToDeleteEstudio)).findFirst().get().getId();
+
+        final long nonExistentPersonaId = Long.MAX_VALUE;
+        final String errorMsg = String.format("Persona id %d no encontrada.", nonExistentPersonaId);
+        final String requestPath = String.format("%s/persona/remove/%s/estudios/%s", API_URL, nonExistentPersonaId, existentEstudioIdToDelete);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .when()
+                .delete(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
+
+    @Test
+    void removeEstudio_WhenEstudioIdIsNotFound_ShouldReturnError() {
+        //given
+        final Persona personaInDb = personaRepository.findAll().stream().findFirst().get();
+        final Long personaIdToDeleteEstudio = personaInDb.getId();
+        final String accessToken = JWT.create()
+                .withSubject(personaInDb.getUsuario().getUsername())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
+                .withIssuer("integration test")
+                .withClaim("roles", List.of("ROLE_USER"))
+                .sign(jwtConfig.algorithmWithSecret());
+
+        final long nonExistentEstudioIdToDelete = Long.MAX_VALUE;
+        final String errorMsg = String.format("Estudio id %d no encontrado.", nonExistentEstudioIdToDelete);
+        final String requestPath = String.format("%s/persona/remove/%s/estudios/%s", API_URL, personaIdToDeleteEstudio, nonExistentEstudioIdToDelete);
+
+        //when
+        //then
+        RestAssured.given()
+                .log().all()
+                .port(randomServerPort)
+                .header("Authorization", String.format("Bearer %s", accessToken))
+                .when()
+                .delete(requestPath)
+                .then()
+                .log().all()
+                .assertThat()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .contentType(ContentType.JSON)
+                .body("timestamp", is(LocalDate.now().toString()))
+                .body("status", is(HttpStatus.NOT_FOUND.value()))
+                .body("error", is(HttpStatus.NOT_FOUND.getReasonPhrase()))
+                .body("message", is(errorMsg))
+                .body("path", is(requestPath))
+                .body("size()", is(5));
+    }
 }
