@@ -1,5 +1,8 @@
 # Backend proyecto Argentina Programa
 
+[![CI-CD](https://github.com/JereCalvet/BackendProyectoArgProg/actions/workflows/cicd.yml/badge.svg?branch=main)](https://github.com/JereCalvet/BackendProyectoArgProg/actions/workflows/cicd.yml)
+[![Coverage](.github/badges/jacoco.svg)](https://github.com/JereCalvet/BackendProyectoArgProg/actions/workflows/badge.yml)
+
 Este repositorio es parte de la entrega final del curso de programación `Argentina Programa #YoProgramo`.
 
 Aquí está hosteado el proyecto en vivo:
@@ -30,7 +33,7 @@ La misma está dividida en dos etapas:
 
 ## To-Do / Mejoras
 
-* Agregar tests.
+* ~~Agregar tests.~~
 * Agregar la capacidad de que la persona agregue redes sociales.
 * Agregar la capacidad de que la persona agregue una imagen de perfil.
 * Normalizar "lugar".
