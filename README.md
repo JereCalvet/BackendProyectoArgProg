@@ -1,7 +1,7 @@
 # Backend proyecto Argentina Programa
 
 [![CI-CD](https://github.com/JereCalvet/BackendProyectoArgProg/actions/workflows/cicd.yml/badge.svg?branch=main)](https://github.com/JereCalvet/BackendProyectoArgProg/actions/workflows/cicd.yml)
-[![Coverage](.github/badges/jacoco.svg)](https://github.com/JereCalvet/BackendProyectoArgProg/actions/workflows/badge.yml)
+[![Coverage](.github/badges/jacoco.svg)](https://github.com/JereCalvet/BackendProyectoArgProg/actions/workflows/cicd.yml)
 
 Este repositorio es parte de la entrega final del curso de programación `Argentina Programa #YoProgramo`.
 
