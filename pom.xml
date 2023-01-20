@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.argentinaprog.yoprogramo</groupId>
     <artifactId>proyectocv.spa.jere</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.2</version>
     <name>proyectocv.spa.jere</name>
     <description>Proyecto cv</description>
     <properties>

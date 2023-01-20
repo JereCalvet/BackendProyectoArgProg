@@ -33,7 +33,7 @@ La misma está dividida en dos etapas:
 
 ## To-Do / Mejoras
 
-* Agregar tests.
+* ~~Agregar tests.~~
 * Agregar la capacidad de que la persona agregue redes sociales.
 * Agregar la capacidad de que la persona agregue una imagen de perfil.
 * Normalizar "lugar".
