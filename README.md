@@ -14,7 +14,7 @@ Está hecho con Java 11, Spring y Mysql utilizando gitflow.
 
 ## Deploy CI-CD
 
-Se hace automáticamente con una acción de github cuando se suben código a la rama principal (main).
+Se realiza automáticamente con una acción de github cuando se suben código a la rama principal (main).
 La misma está dividida en dos etapas:
 
 * Staging: Se construye el proyecto y corre todos los test. Si no ocurre ningún error, inicia la etapa del deploy.
